@@ -4,42 +4,58 @@ import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button, type ButtonSize, type ButtonVariant } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form";
+import { toast } from "@/components/ui/toast";
 
 type Result = { ok: boolean; message: string };
 
-/** Button that runs a server action and shows its result. */
-export function ActionButton({ action, children, variant = "secondary", size = "sm", showResult = true }: { action: () => Promise<Result>; children: ReactNode; variant?: ButtonVariant; size?: ButtonSize; showResult?: boolean }) {
+const FAILED = () => (navigator.onLine ? "Something went wrong. Nothing was saved." : "You are offline. This was NOT sent.");
+
+/** Button that runs a server action, shows a spinner, and confirms with a toast. */
+export function ActionButton({
+  action,
+  children,
+  variant = "secondary",
+  size = "sm",
+  successTitle,
+  className,
+}: {
+  action: () => Promise<Result>;
+  children: ReactNode;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  showResult?: boolean;
+  successTitle?: string;
+  className?: string;
+}) {
   const [pending, start] = useTransition();
-  const [res, setRes] = useState<Result | null>(null);
   const router = useRouter();
   return (
-    <span className="inline-flex flex-col gap-1">
-      <Button
-        variant={variant}
-        size={size}
-        disabled={pending}
-        onClick={() =>
-          start(async () => {
-            try {
-              const r = await action();
-              setRes(r);
-              router.refresh();
-            } catch {
-              setRes({ ok: false, message: "Action failed — you may not have permission or be offline." });
-            }
-          })
-        }
-      >
-        {pending ? "Working…" : children}
-      </Button>
-      {showResult && res && !res.ok ? <span className="text-xs text-danger">{res.message}</span> : null}
-    </span>
+    <Button
+      variant={variant}
+      size={size}
+      loading={pending}
+      className={className}
+      onClick={() =>
+        start(async () => {
+          try {
+            const r = await action();
+            toast({ tone: r.ok ? "success" : "error", title: r.ok ? (successTitle ?? r.message) : "Couldn't do that", body: r.ok && successTitle ? r.message : r.ok ? undefined : r.message });
+            router.refresh();
+          } catch {
+            toast({ tone: "error", title: "Couldn't do that", body: FAILED() });
+          }
+        })
+      }
+    >
+      {children}
+    </Button>
   );
 }
 
 /**
  * Form wrapper for server actions. Sends the raw field values (multi-value fields as arrays)
  * plus the browser timezone offset (__tz); a server-side adapter converts and validates them.
+ * Success shows a toast; errors stay next to the form so they're easy to fix.
  */
 export function ActionForm({
   action,
@@ -69,24 +85,27 @@ export function ActionForm({
           const vals = fd.getAll(key).filter((v): v is string => typeof v === "string");
           raw[key] = vals.length > 1 ? vals : (vals[0] ?? "");
         }
+        setRes(null);
         start(async () => {
           try {
             const r = await action(raw);
-            setRes(r);
             if (r.ok) {
+              toast({ tone: "success", title: r.message });
+              // Keep success visible inline too when it carries something to copy (e.g. invite codes).
+              setRes(r.message.includes(":") ? r : null);
               if (resetOnSuccess) form.reset();
               router.refresh();
-            }
+            } else setRes(r);
           } catch {
-            setRes({ ok: false, message: navigator.onLine ? "Something went wrong. Nothing was saved." : "You are offline. This was NOT sent." });
+            setRes({ ok: false, message: FAILED() });
           }
         });
       }}
     >
       {children}
       <FormMessage state={res} />
-      <Button type="submit" disabled={pending}>
-        {pending ? "Working…" : submitLabel}
+      <Button type="submit" loading={pending}>
+        {pending ? "Saving…" : submitLabel}
       </Button>
     </form>
   );

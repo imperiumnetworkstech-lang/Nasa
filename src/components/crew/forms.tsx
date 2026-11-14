@@ -38,7 +38,7 @@ export function CheckInForm() {
       </Field>
       <Checkbox label="I'd like medical follow-up" help="Your flight surgeon will be notified to get in touch." checked={followUp} onChange={(e) => setFollowUp(e.target.checked)} />
       <FormMessage state={state} />
-      <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={busy || missing.length > 0}>
+      <Button type="submit" loading={busy} size="lg" className="w-full sm:w-auto" disabled={busy || missing.length > 0}>
         {busy ? "Saving…" : missing.length ? `Answer ${missing.length} more` : "Save check-in"}
       </Button>
     </form>
@@ -108,7 +108,7 @@ export function VitalForm() {
       </div>
       </details>
       <FormMessage state={state} />
-      <Button type="submit" disabled={busy}>
+      <Button type="submit" loading={busy} disabled={busy}>
         {busy ? "Saving…" : "Save reading"}
       </Button>
     </form>
@@ -147,7 +147,7 @@ export function SleepForm() {
         <Input id="s-shift" value={shift} onChange={(e) => setShift(e.target.value)} placeholder="e.g. Nominal, shifted for EVA" />
       </Field>
       <FormMessage state={state} />
-      <Button type="submit" disabled={busy || quality === undefined}>
+      <Button type="submit" loading={busy} disabled={busy || quality === undefined}>
         {busy ? "Saving…" : "Save sleep"}
       </Button>
     </form>
@@ -183,7 +183,7 @@ export function HydrationQuickAdd({ unit }: { unit: "ml" | "oz" }) {
           Custom amount in {unit}
         </label>
         <Input id="h-custom" type="number" min={1} placeholder={`Custom amount (${unit})`} value={custom} onChange={(e) => setCustom(e.target.value)} />
-        <Button type="submit" variant="secondary" disabled={busy || !custom}>
+        <Button type="submit" loading={busy} variant="secondary" disabled={busy || !custom}>
           Add
         </Button>
       </form>
@@ -219,7 +219,7 @@ export function MealForm() {
         </Field>
       </div>
       <FormMessage state={state} />
-      <Button type="submit" variant="secondary" disabled={busy}>
+      <Button type="submit" loading={busy} variant="secondary" disabled={busy}>
         Log meal
       </Button>
     </form>
@@ -275,7 +275,7 @@ export function ActivityForm() {
       </div>
       <ScaleInput name="recovery" legend="How recovered do you feel?" kind="recovery" value={recovery} onChange={setRecovery} />
       <FormMessage state={state} />
-      <Button type="submit" disabled={busy}>
+      <Button type="submit" loading={busy} disabled={busy}>
         {busy ? "Saving…" : "Log exercise"}
       </Button>
     </form>
@@ -308,7 +308,7 @@ export function MoodForm() {
       </Field>
       <Checkbox label="Share this entry with my flight surgeon" help="Off by default. Commanders never see mood entries." checked={share} onChange={(e) => setShare(e.target.checked)} />
       <FormMessage state={state} />
-      <Button type="submit" disabled={busy || mood === undefined}>
+      <Button type="submit" loading={busy} disabled={busy || mood === undefined}>
         {busy ? "Saving…" : "Save mood"}
       </Button>
     </form>
@@ -331,7 +331,7 @@ export function JournalForm() {
         <Textarea id="j-text" maxLength={4000} className="min-h-32" value={text} onChange={(e) => setText(e.target.value)} />
       </Field>
       <FormMessage state={state} />
-      <Button type="submit" variant="secondary" disabled={busy || !text.trim()}>
+      <Button type="submit" loading={busy} variant="secondary" disabled={busy || !text.trim()}>
         Save entry
       </Button>
     </form>

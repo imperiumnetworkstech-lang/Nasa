@@ -99,7 +99,7 @@ export function SymptomForm() {
       />
       <p className="text-xs text-muted">Photo attachments are stored in Firebase Storage with strict access rules and are available once Storage is configured for this deployment.</p>
       <FormMessage state={state} />
-      <Button type="submit" size="lg" disabled={busy}>
+      <Button type="submit" loading={busy} size="lg" disabled={busy}>
         {busy ? "Sending…" : "Submit report"}
       </Button>
     </form>

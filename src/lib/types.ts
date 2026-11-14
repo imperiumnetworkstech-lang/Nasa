@@ -15,6 +15,15 @@ export const ROLE_LABELS: Record<Role, string> = {
   admin: "Platform Administrator",
 };
 
+/** Short, plain role names for admin screens. */
+export const ROLE_SHORT: Record<Role, string> = {
+  astronaut: "Crew",
+  medical: "Doctor",
+  commander: "Commander",
+  researcher: "Researcher",
+  admin: "Admin",
+};
+
 export type Origin = "user" | "simulated" | "imported";
 export type ISODate = string;
 

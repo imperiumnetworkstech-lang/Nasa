@@ -74,7 +74,7 @@ export async function createInvite(input: unknown): Promise<R> {
   await saveInvite({ code, ...p.data, createdBy: a.uid, createdAt: new Date().toISOString() });
   await audit({ missionId: p.data.missionId, actorUid: a.uid, actorName: a.displayName, action: "invite.create", target: `invites/${code}`, detail: p.data.role });
   revalidatePath("/app/admin/users");
-  return { ok: true, message: `Invite created: ${code}` };
+  return { ok: true, message: `Done! Share this code: ${code}` };
 }
 
 export async function upsertMission(input: unknown): Promise<R> {

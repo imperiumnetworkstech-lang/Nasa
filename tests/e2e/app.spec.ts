@@ -71,21 +71,31 @@ test("offline entries are visibly queued, not falsely delivered", async ({ page,
   await context.setOffline(false);
 });
 
-test("medical officer acknowledges an alert with an audit trail", async ({ page }) => {
+test("medical officer responds to an alert in one tap, with undo and audit trail", async ({ page }) => {
   await enterDemo(page, "Flight surgeon");
   await page.goto("/app/medical/alerts?status=open");
   const first = page.locator("section[id^='al_']").first();
   await expect(first).toBeVisible();
   const id = await first.getAttribute("id");
-  await first.getByLabel("Action").selectOption("acknowledge");
-  await first.getByLabel(/Note/).fill("Reviewed in e2e");
-  await first.getByRole("button", { name: "Apply" }).click();
-  // Once acknowledged it leaves the "open" list and appears under "acknowledged" with its history.
-  await expect(page.locator(`#${id}`)).toHaveCount(0);
-  await page.goto("/app/medical/alerts?status=acknowledged");
-  await expect(page.locator(`#${id}`).getByText("Reviewed in e2e")).toBeAttached();
+  await first.getByRole("button", { name: "Note" }).click();
+  await first.getByPlaceholder(/Optional note/).fill("Reviewed in e2e");
+  await first.getByRole("button", { name: "Acknowledge" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Acknowledged" }).first()).toBeVisible();
+  // Undo from the toast puts it back to open.
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Undone" }).first()).toBeVisible();
+  await page.goto("/app/medical/alerts?status=open");
+  await expect(page.locator(`#${id}`)).toBeVisible();
   await page.goto("/app/medical/audit-log");
   await expect(page.getByText("alert.acknowledge").first()).toBeVisible();
+  await expect(page.getByText("alert.reopen").first()).toBeVisible();
+});
+
+test("admin creates an invite code in a couple of taps", async ({ page }) => {
+  await enterDemo(page, "Administrator");
+  await expect(page.getByRole("heading", { name: "People" })).toBeVisible();
+  await page.getByRole("button", { name: "Create invite code" }).click();
+  await expect(page.getByText(/Share this code: AST-/).first()).toBeVisible();
 });
 
 test("researcher can search NASA OSDR (live or labelled fallback)", async ({ page }) => {

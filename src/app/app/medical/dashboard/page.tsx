@@ -10,6 +10,8 @@ import { DemoBadge, SeverityBadge } from "@/components/ui/badge";
 import { CrewCard } from "@/components/medical/crew-card";
 import { TrendChart, CHART_COLORS } from "@/components/charts/trend-chart";
 import Link from "next/link";
+import { ActionButton } from "@/components/action-ui";
+import { alertAction } from "@/lib/actions/medical";
 
 export const metadata: Metadata = { title: "Medical dashboard" };
 
@@ -50,13 +52,20 @@ export default async function MedicalDashboard() {
             <CardBody className="space-y-2">
               {open.length === 0 ? <p className="text-sm text-muted">No open alerts.</p> : null}
               {open.slice(0, 5).map((a) => (
-                <Link key={a.id} href={`/app/medical/alerts#${a.id}`} className="block rounded-2xl bg-surface-2 px-3 py-2.5 text-sm hover:bg-primary-soft">
-                  <span className="flex items-center justify-between gap-2">
-                    <strong className="truncate">{a.crewLabel}: {a.title}</strong>
-                    <SeverityBadge severity={a.severity} />
-                  </span>
-                  <span className="text-xs text-muted">{a.observed}</span>
-                </Link>
+                <div key={a.id} className="flex items-center gap-2 rounded-2xl bg-surface-2 px-3 py-2.5 text-sm">
+                  <Link href={`/app/medical/alerts#${a.id}`} className="min-w-0 flex-1 hover:underline">
+                    <span className="flex items-center gap-2">
+                      <strong className="truncate">{a.crewLabel}: {a.title}</strong>
+                    </span>
+                    <span className="block truncate text-xs text-muted">{a.observed}</span>
+                  </Link>
+                  <SeverityBadge severity={a.severity} />
+                  {a.status === "open" ? (
+                    <ActionButton action={alertAction.bind(null, { alertId: a.id, action: "acknowledge" })} variant="primary" successTitle="Acknowledged">
+                      OK
+                    </ActionButton>
+                  ) : null}
+                </div>
               ))}
             </CardBody>
           </Card>

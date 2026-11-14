@@ -76,7 +76,7 @@ export default async function Datasets({ searchParams }: PageProps<"/app/researc
       {res.studies.length === 0 ? <EmptyState title="No studies found" body="Try a broader keyword or remove the filter." /> : null}
       <div className="space-y-3">
         {res.studies.map((s) => (
-          <Link key={s.accession} href={`/app/research/datasets/${s.accession}`} className="block rounded-[var(--radius-card)] bg-surface p-5 shadow-[var(--shadow-card)] transition-colors hover:bg-primary-soft">
+          <Link key={s.accession} href={`/app/research/datasets/${s.accession}`} className="lift block rounded-[var(--radius-card)] bg-surface p-5 shadow-[var(--shadow-card)] hover:bg-primary-soft">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap gap-1.5">

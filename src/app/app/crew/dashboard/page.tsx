@@ -119,7 +119,7 @@ export default async function CrewDashboard() {
             <CardHeader title="My wellbeing" action={<ViewAll href="/app/crew/history" />} />
             <CardBody className="space-y-2.5">
               {wellbeing.map((w) => (
-                <Link key={w.title} href={w.href} className="flex items-center gap-3 rounded-2xl p-2.5 transition-colors hover:bg-primary-soft">
+                <Link key={w.title} href={w.href} className="flex items-center gap-3 rounded-2xl p-2.5 transition-colors hover:bg-primary-soft active:scale-[0.99]">
                   <IconTile tone={w.tone}>
                     <w.icon aria-hidden className="h-5 w-5" />
                   </IconTile>
@@ -181,7 +181,7 @@ export default async function CrewDashboard() {
             </CardBody>
           </Card>
 
-          <Link href="/app/crew/symptoms" className="flex items-center gap-3 rounded-[var(--radius-card)] bg-surface p-4 text-sm shadow-[var(--shadow-card)] hover:bg-primary-soft">
+          <Link href="/app/crew/symptoms" className="lift flex items-center gap-3 rounded-[var(--radius-card)] bg-surface p-4 text-sm shadow-[var(--shadow-card)] hover:bg-primary-soft">
             <IconTile tone="pink">
               <Stethoscope aria-hidden className="h-5 w-5" />
             </IconTile>
@@ -192,7 +192,7 @@ export default async function CrewDashboard() {
             <ChevronRight aria-hidden className="h-5 w-5 text-muted" />
           </Link>
 
-          <Link href="/app/crew/health" className="flex items-center gap-3 rounded-[var(--radius-card)] bg-surface p-4 text-sm shadow-[var(--shadow-card)] hover:bg-primary-soft">
+          <Link href="/app/crew/health" className="lift flex items-center gap-3 rounded-[var(--radius-card)] bg-surface p-4 text-sm shadow-[var(--shadow-card)] hover:bg-primary-soft">
             <IconTile tone="violet">
               <HeartPulse aria-hidden className="h-5 w-5" />
             </IconTile>

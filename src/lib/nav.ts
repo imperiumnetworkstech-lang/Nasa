@@ -73,13 +73,13 @@ const research: NavGroup = {
   ],
 };
 
+// Admin menu: three plain items. The access-rules page is linked from People.
 const admin: NavGroup[] = [
   {
-    label: "Administration",
+    label: "Admin",
     items: [
-      { href: "/app/admin/users", label: "Users & invites", icon: "Users" },
+      { href: "/app/admin/users", label: "People", icon: "Users", description: "Roles, missions and invites" },
       { href: "/app/admin/missions", label: "Missions", icon: "Rocket" },
-      { href: "/app/admin/roles", label: "Roles & permissions", icon: "KeyRound" },
       { href: "/app/admin/settings", label: "Settings", icon: "Settings" },
     ],
   },
@@ -106,9 +106,19 @@ const crewShared: NavGroup = {
   ],
 };
 
+const adminShared: NavGroup = {
+  label: "More",
+  items: [
+    { href: "/app/notifications", label: "Notifications", icon: "Bell" },
+    { href: "/app/profile", label: "Profile", icon: "UserRound" },
+    { href: "/app/help", label: "Help", icon: "LifeBuoy" },
+  ],
+};
+
 export function navForRole(role: Role): NavGroup[] {
   // Crew members never see research/data tooling — that stays with staff roles.
   if (role === "astronaut") return [...crew, crewShared];
-  const main = role === "medical" ? medical : role === "commander" ? commander : role === "admin" ? admin : [];
+  if (role === "admin") return [...admin, adminShared];
+  const main = role === "medical" ? medical : role === "commander" ? commander : [];
   return [...main, research, shared];
 }

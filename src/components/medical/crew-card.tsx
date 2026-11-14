@@ -8,7 +8,7 @@ export function CrewCard({ s }: { s: CrewSnapshot }) {
   const urgent = s.openAlerts.filter((a) => a.severity === "urgent").length;
   const attention = s.openAlerts.filter((a) => a.severity === "attention").length;
   return (
-    <Link href={`/app/medical/crew/${s.member.uid}`} className="flex items-center gap-3 rounded-[var(--radius-card)] bg-surface p-4 shadow-[var(--shadow-card)] transition-colors hover:bg-primary-soft">
+    <Link href={`/app/medical/crew/${s.member.uid}`} className="flex items-center gap-3 lift rounded-[var(--radius-card)] bg-surface p-4 shadow-[var(--shadow-card)] hover:bg-primary-soft">
       <span className="hero-gradient flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white" aria-hidden>
         {s.member.callSign.slice(0, 2).toUpperCase()}
       </span>

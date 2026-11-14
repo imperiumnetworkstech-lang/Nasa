@@ -1,6 +1,7 @@
 "use client";
 
-import { FormMessage } from "@/components/ui/form";
+import { useState } from "react";
+import { Check } from "lucide-react";
 import { useRecordSubmit } from "./use-submit";
 
 const FACES = [
@@ -13,7 +14,8 @@ const FACES = [
 
 /** One-tap "How are you feeling?" — saved as a private mood entry (not shared by default). */
 export function QuickFeeling() {
-  const { submit, busy, state } = useRecordSubmit("moodLogs");
+  const { submit, busy } = useRecordSubmit("moodLogs");
+  const [picked, setPicked] = useState<number | null>(null);
   return (
     <div className="space-y-3">
       <div role="group" aria-label="How are you feeling right now?" className="grid grid-cols-5 gap-1.5">
@@ -21,9 +23,15 @@ export function QuickFeeling() {
           <button
             key={f.v}
             disabled={busy}
-            onClick={() => submit({ mood: f.v, stress: null, shareWithMedical: false }, `Logged “${f.l}”. Private to you unless you share it.`)}
-            className="flex min-h-16 min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl bg-surface-2 px-1 text-[10px] leading-tight hover:bg-primary-soft hover:text-primary disabled:opacity-50"
+            aria-pressed={picked === f.v}
+            onClick={async () => {
+              setPicked(f.v);
+              const r = await submit({ mood: f.v, stress: null, shareWithMedical: false }, `Mood saved: ${f.l}`);
+              if (r.status === "error") setPicked(null);
+            }}
+            className={`relative flex min-h-16 min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[10px] leading-tight transition-all active:scale-95 disabled:opacity-60 ${picked === f.v ? "hero-gradient scale-105 text-white shadow-[var(--shadow-pop)]" : "bg-surface-2 hover:-translate-y-0.5 hover:bg-primary-soft hover:text-primary"}`}
           >
+            {picked === f.v && !busy ? <Check aria-hidden className="absolute right-1.5 top-1.5 h-3 w-3" /> : null}
             <span aria-hidden className="text-2xl">
               {f.e}
             </span>
@@ -31,7 +39,7 @@ export function QuickFeeling() {
           </button>
         ))}
       </div>
-      <FormMessage state={state} />
+      <p className="text-center text-[11px] text-muted">Private to you unless you choose to share.</p>
     </div>
   );
 }

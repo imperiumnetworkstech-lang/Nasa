@@ -40,7 +40,7 @@ export default async function ResearchHome() {
           { href: "/app/research/insights", label: "Insights & model", icon: LineChart, tone: "teal" as const },
           { href: "/app/research/methodology", label: "Methodology", icon: BookOpen, tone: "amber" as const },
         ].map((x) => (
-          <Link key={x.href} href={x.href} className="flex items-center gap-3 rounded-[var(--radius-card)] bg-surface p-4 font-semibold shadow-[var(--shadow-card)] hover:bg-primary-soft">
+          <Link key={x.href} href={x.href} className="lift flex items-center gap-3 rounded-[var(--radius-card)] bg-surface p-4 font-semibold shadow-[var(--shadow-card)] hover:bg-primary-soft">
             <IconTile tone={x.tone}>
               <x.icon aria-hidden className="h-5 w-5" />
             </IconTile>

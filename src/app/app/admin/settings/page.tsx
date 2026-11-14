@@ -6,7 +6,7 @@ import { settingsForm } from "@/lib/actions/forms";
 import { isDemoEnabled } from "@/lib/config";
 import { isProviderConfigured } from "@/lib/guide/provider";
 import { fmtDateTime } from "@/lib/utils";
-import { Callout, PageHeader } from "@/components/ui/misc";
+import { PageHeader } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ActionButton, ActionForm } from "@/components/action-ui";
@@ -14,93 +14,122 @@ import { Field, Input } from "@/components/ui/form";
 
 export const metadata: Metadata = { title: "Settings" };
 
-const NUM_FIELDS: [keyof Awaited<ReturnType<typeof getSettings>>["thresholds"], string, string, number][] = [
-  ["hrDriftZ", "Heart-rate drift threshold", "SD", 0.1],
-  ["baselineWindowDays", "Baseline window", "days", 1],
-  ["baselineMinObservations", "Min observations for baseline", "obs", 1],
-  ["minSleepHours", "Short-sleep threshold (3-night avg)", "h", 0.1],
-  ["spo2Below", "SpO₂ flag below", "%", 1],
-  ["temperatureAboveC", "Temperature flag above", "°C", 0.1],
-  ["missedCheckInDays", "Missed check-in after", "days", 1],
-  ["sustainedStressCount", "Sustained stress check-ins", "count", 1],
-  ["minRestHoursBetweenHighWorkload", "Min rest between high-workload blocks", "h", 0.5],
+const THRESHOLDS: [keyof Awaited<ReturnType<typeof getSettings>>["thresholds"], string, string, number][] = [
+  ["hrDriftZ", "Heart-rate change to flag", "× usual variation", 0.1],
+  ["baselineWindowDays", "Days used to learn someone's usual", "days", 1],
+  ["baselineMinObservations", "Readings needed before comparing", "readings", 1],
+  ["minSleepHours", "Flag sleep shorter than (3-night average)", "hours", 0.1],
+  ["spo2Below", "Flag oxygen below", "%", 1],
+  ["temperatureAboveC", "Flag temperature above", "°C", 0.1],
+  ["missedCheckInDays", "Remind after missed check-ins", "days", 1],
+  ["sustainedStressCount", "Flag high stress after", "check-ins in a row", 1],
+  ["minRestHoursBetweenHighWorkload", "Minimum rest between heavy tasks", "hours", 0.5],
 ];
+
+function Toggle({ name, label, help, checked }: { name: string; label: string; help: string; checked: boolean }) {
+  return (
+    <label className="flex items-start justify-between gap-4 rounded-2xl bg-surface-2 p-4">
+      <span>
+        <span className="block text-sm font-semibold">{label}</span>
+        <span className="block text-xs text-muted">{help}</span>
+      </span>
+      <input type="checkbox" name={name} defaultChecked={checked} className="mt-1 h-5 w-5 shrink-0 accent-[var(--primary)]" />
+    </label>
+  );
+}
 
 export default async function AdminSettings() {
   const [s, log] = await Promise.all([getSettings(), listPlatformAudit()]);
   return (
-    <div className="space-y-6">
-      <PageHeader title="Platform settings" description={`Data backend: ${backendName() === "firestore" ? "Cloud Firestore" : "Local file store (development / demo)"}. Last updated ${fmtDateTime(s.updatedAt)} by ${s.updatedBy}.`} />
-      <Callout tone="warn" title="Illustrative thresholds">
-        Default values are for demonstration only. Mission medical teams must configure mission-specific thresholds. Rule set version {s.rulesVersion}.
-      </Callout>
-      <Card>
-        <CardHeader title="Thresholds, privacy & communication delay" />
-        <CardBody>
-          <ActionForm
-            action={settingsForm}
-            resetOnSuccess={false}
-            submitLabel="Save settings"
-          >
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Field label="Simulated one-way comm delay (minutes)" htmlFor="cd" help="0 disables communication-delay mode. Max 45 min.">
-                <Input id="cd" name="commDelayMin" type="number" step="0.5" min={0} max={45} defaultValue={s.commDelaySeconds / 60} />
-              </Field>
-              <Field label="Privacy minimum group size" htmlFor="pg" help="Aggregates over fewer people are hidden.">
-                <Input id="pg" name="privacyMinGroupSize" type="number" min={2} max={20} defaultValue={s.privacyMinGroupSize} />
-              </Field>
-              {NUM_FIELDS.map(([k, label, unit, step]) => (
-                <Field key={k} label={`${label} (${unit})`} htmlFor={k}>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <PageHeader title="Settings" description={`Last changed ${fmtDateTime(s.updatedAt)} by ${s.updatedBy}.`} />
+
+      <ActionForm action={settingsForm} resetOnSuccess={false} submitLabel="Save settings" className="space-y-6">
+        <Card>
+          <CardHeader title="Message delay" description="Pretend messages take time to travel, like on a real deep-space mission." />
+          <CardBody>
+            <Field label="Delay each way (minutes)" htmlFor="cd" help="0 means no delay. Up to 45 minutes.">
+              <Input id="cd" name="commDelayMin" type="number" step="0.5" min={0} max={45} defaultValue={s.commDelaySeconds / 60} className="max-w-40" />
+            </Field>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader title="Privacy" />
+          <CardBody>
+            <Field label="Hide group averages when fewer than this many people" htmlFor="pg" help="Stops anyone working out one person's data from a small group. 3 or more is recommended.">
+              <Input id="pg" name="privacyMinGroupSize" type="number" min={2} max={20} defaultValue={s.privacyMinGroupSize} className="max-w-40" />
+            </Field>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader title="Features" />
+          <CardBody className="space-y-2">
+            <Toggle name="readinessSummary" label="Wellbeing summary" help="Shows crew a short ‘how am I doing’ summary." checked={s.features.readinessSummary} />
+            <Toggle name="environmentOverlay" label="Habitat readings on the timeline" help="Shows cabin CO₂ and temperature next to crew trends." checked={s.features.environmentOverlay} />
+            <Toggle
+              name="guideAI"
+              label="Use an outside AI service for the assistant"
+              help={`Off is safest. Health records are never sent to it. ${isProviderConfigured() ? "A service is configured." : "No service is configured, so the built-in assistant is used either way."}`}
+              checked={s.features.guideAI}
+            />
+          </CardBody>
+        </Card>
+
+        <Card>
+          <details>
+            <summary className="cursor-pointer list-none px-5 py-5">
+              <span className="block text-base font-semibold">Health alert levels</span>
+              <span className="block text-xs text-muted">Advanced — set these with your mission&apos;s medical team. The defaults are examples only.</span>
+            </summary>
+            <CardBody className="grid gap-4 pt-0 sm:grid-cols-2">
+              {THRESHOLDS.map(([k, label, unit, step]) => (
+                <Field key={k} label={label} htmlFor={k} help={unit}>
                   <Input id={k} name={k} type="number" step={step} defaultValue={s.thresholds[k]} />
                 </Field>
               ))}
-            </div>
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-semibold">Features</legend>
-              {[
-                ["readinessSummary", "Wellbeing summary on crew pages", s.features.readinessSummary],
-                ["environmentOverlay", "Habitat environment overlay", s.features.environmentOverlay],
-                ["guideAI", `External AI provider for Antariksha Guide ${isProviderConfigured() ? "(provider configured)" : "(no provider configured — local guide will be used)"}`, s.features.guideAI],
-              ].map(([k, l, v]) => (
-                <label key={String(k)} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" name={String(k)} defaultChecked={Boolean(v)} className="h-5 w-5 accent-[var(--primary)]" /> {String(l)}
-                </label>
-              ))}
-              <p className="text-xs text-muted">The AI provider never receives health records. Review your organisation&apos;s privacy requirements before enabling it.</p>
-            </fieldset>
-          </ActionForm>
-        </CardBody>
-      </Card>
+            </CardBody>
+          </details>
+        </Card>
+      </ActionForm>
+
       {isDemoEnabled() ? (
         <Card>
-          <CardHeader title="Demo data" description="Synthetic, clearly-labelled data for evaluation." action={<Badge tone="warn">Demo mode on</Badge>} />
+          <CardHeader title="Practice data" description="Made-up people and records for trying the app." action={<Badge tone="warn">Demo mode on</Badge>} />
           <CardBody className="flex flex-wrap gap-3">
             <ActionButton action={seedDemo} variant="secondary" size="md">
-              Seed demo data
+              Add practice data
             </ActionButton>
             <ActionButton action={refreshDemo} variant="outline" size="md">
-              Regenerate demo data (current dates)
+              Refresh practice data to today
             </ActionButton>
           </CardBody>
         </Card>
       ) : null}
+
       <Card>
-        <CardHeader title="Platform audit log" />
-        <CardBody>
-          <ul className="space-y-1 text-sm">
-            {log.slice(0, 40).map((l) => (
-              <li key={l.id} className="flex flex-wrap justify-between gap-2 border-t border-line py-1.5">
-                <span>
-                  <code className="rounded bg-surface-2 px-1 text-xs">{l.action}</code> {l.target} {l.detail ? <span className="text-muted">({l.detail})</span> : null}
-                </span>
-                <span className="text-xs text-muted">
-                  {l.actorName} · {fmtDateTime(l.at)}
-                </span>
-              </li>
-            ))}
-            {log.length === 0 ? <li className="text-muted">No platform-level events yet.</li> : null}
-          </ul>
-        </CardBody>
+        <details>
+          <summary className="cursor-pointer list-none px-5 py-5">
+            <span className="block text-base font-semibold">Activity log</span>
+            <span className="block text-xs text-muted">Admin changes, newest first · storage: {backendName() === "firestore" ? "Cloud Firestore" : "local file (testing only)"}</span>
+          </summary>
+          <CardBody className="pt-0">
+            <ul className="space-y-1 text-sm">
+              {log.slice(0, 40).map((l) => (
+                <li key={l.id} className="flex flex-wrap justify-between gap-2 border-t border-line py-1.5">
+                  <span>
+                    <code className="rounded bg-surface-2 px-1 text-xs">{l.action}</code> {l.detail ? <span className="text-muted">({l.detail})</span> : null}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {l.actorName} · {fmtDateTime(l.at)}
+                  </span>
+                </li>
+              ))}
+              {log.length === 0 ? <li className="text-muted">Nothing yet.</li> : null}
+            </ul>
+          </CardBody>
+        </details>
       </Card>
     </div>
   );

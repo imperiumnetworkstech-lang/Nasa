@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +31,14 @@ export function buttonClass(variant: ButtonVariant = "primary", size: ButtonSize
   );
 }
 
-export function Button({ variant, size, className, type = "button", ...props }: ComponentProps<"button"> & { variant?: ButtonVariant; size?: ButtonSize }) {
-  return <button type={type} className={buttonClass(variant, size, className)} {...props} />;
+/** Button with an optional loading state (spinner + disabled + aria-busy). */
+export function Button({ variant, size, className, type = "button", loading, children, disabled, ...props }: ComponentProps<"button"> & { variant?: ButtonVariant; size?: ButtonSize; loading?: boolean }) {
+  return (
+    <button type={type} className={buttonClass(variant, size, className)} disabled={disabled || loading} aria-busy={loading || undefined} {...props}>
+      {loading ? <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> : null}
+      {children}
+    </button>
+  );
 }
 
 export function ButtonLink({ variant, size, className, ...props }: ComponentProps<typeof Link> & { variant?: ButtonVariant; size?: ButtonSize }) {

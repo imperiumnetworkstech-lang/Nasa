@@ -68,3 +68,36 @@ test("medical officer cannot open crew from another mission (not found, no data)
   await expect(page.getByRole("heading", { name: "404" })).toBeVisible();
   await expect(page.getByText("Noor Haddad")).toHaveCount(0);
 });
+
+/** Phone-width check: no page may scroll sideways. */
+for (const [role, routes] of Object.entries(ROUTES)) {
+  test(`no sideways scrolling on phones for ${role}`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/login");
+    await page.getByRole("button", { name: new RegExp(role, "i") }).click();
+    await page.waitForURL(/\/app\//);
+    for (const r of routes) {
+      await page.goto(r);
+      await expect(page.locator("h1").first(), r).toBeVisible();
+      const overflow = await page.evaluate(() => {
+        const vw = document.documentElement.clientWidth;
+        const wide = [...document.querySelectorAll("main *")]
+          .filter((el) => {
+            const b = el.getBoundingClientRect();
+            if (b.right <= vw + 1) return false;
+            // Content inside a deliberately scrollable container (e.g. wide tables) is fine.
+            for (let p = el.parentElement; p; p = p.parentElement) {
+              const ox = getComputedStyle(p).overflowX;
+              if (ox === "auto" || ox === "scroll" || ox === "hidden") return false;
+            }
+            return true;
+          })
+          .slice(0, 3)
+          .map((el) => `${el.tagName}.${String((el as HTMLElement).className).slice(0, 50)}`);
+        return { scroll: document.documentElement.scrollWidth - vw, wide };
+      });
+      expect(overflow, r).toEqual({ scroll: 0, wide: [] });
+    }
+  });
+}
