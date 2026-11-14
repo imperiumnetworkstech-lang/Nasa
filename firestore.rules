@@ -1,0 +1,155 @@
+rules_version = '2';
+
+// Antariksha Firestore security rules — DEFENCE IN DEPTH.
+// The app reads/writes through server code (Firebase Admin SDK, which bypasses rules) after
+// checking lib/permissions. These rules make sure that any direct client access (e.g. a
+// compromised client or a future client-side feature) follows the same policy:
+//   * default deny;
+//   * users read/write only their own personal records, within allowed fields;
+//   * medical officers read only crew on the mission they are assigned to;
+//   * private journals are readable ONLY by their author;
+//   * commanders, researchers and admins get NO direct access to identifiable health records;
+//   * role, status and mission assignment can never be changed by the client.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function isActive() { return signedIn() && me().status == 'active'; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+    function subject(uid) { return get(/databases/$(database)/documents/users/$(uid)).data; }
+
+    // Medical officer assigned to the same mission as an astronaut subject.
+    function isAssignedMedical(uid) {
+      return isActive()
+        && me().role == 'medical'
+        && me().missionId != null
+        && subject(uid).role == 'astronaut'
+        && subject(uid).missionId == me().missionId;
+    }
+    function isMissionMember(missionId) {
+      return isActive() && me().missionId == missionId;
+    }
+
+    // Fields a user may change on their own profile.
+    function onlySelfEditableProfileFields() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['displayName', 'callSign', 'dietaryConstraints', 'allergies', 'preferences', 'updatedAt']);
+    }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAssignedMedical(uid);
+      // Profiles are created server-side (role from validated invite). Clients may only edit safe fields.
+      allow create, delete: if false;
+      allow update: if isSelf(uid) && isActive() && onlySelfEditableProfileFields();
+
+      // Private journal: author only. Never medical, commander, researcher or admin.
+      match /journal/{id} {
+        allow read: if isSelf(uid);
+        allow create: if isSelf(uid) && isActive() && request.resource.data.uid == uid;
+        allow update, delete: if false;
+      }
+
+      // Mood: author always; medical only for entries the author chose to share.
+      match /moodLogs/{id} {
+        allow read: if isSelf(uid) || (isAssignedMedical(uid) && resource.data.shareWithMedical == true);
+        allow create: if isSelf(uid) && isActive() && request.resource.data.uid == uid;
+        allow update, delete: if false;
+      }
+
+      // Clinical notes: written by the assigned medical officer, append-only.
+      match /clinicalNotes/{id} {
+        allow read: if isAssignedMedical(uid);
+        allow create: if isAssignedMedical(uid) && request.resource.data.enteredBy == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      // Medication plans: entered by the assigned medical officer (or the user).
+      match /medications/{id} {
+        allow read: if isSelf(uid) || isAssignedMedical(uid);
+        allow create: if (isSelf(uid) || isAssignedMedical(uid)) && request.resource.data.uid == uid;
+        allow update, delete: if false;
+      }
+
+      // Symptom reports: the author creates; status changes are server-side (append-only history).
+      match /symptomReports/{id} {
+        allow read: if isSelf(uid) || isAssignedMedical(uid);
+        allow create: if isSelf(uid) && isActive() && request.resource.data.uid == uid && request.resource.data.status == 'submitted';
+        allow update, delete: if false;
+      }
+
+      // Notifications: owner may read and mark read.
+      match /notifications/{id} {
+        allow read: if isSelf(uid);
+        allow update: if isSelf(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt']);
+        allow create, delete: if false;
+      }
+
+      // Other personal health records: author writes (immutable once submitted); assigned medical reads.
+      match /{kind}/{id} {
+        allow read: if (isSelf(uid) || isAssignedMedical(uid))
+          && kind in ['checkIns', 'vitals', 'sleepLogs', 'hydrationLogs', 'mealLogs', 'activityLogs', 'cognitiveTests', 'medicationLogs', 'wearableSessions'];
+        allow create: if isSelf(uid) && isActive()
+          && kind in ['checkIns', 'vitals', 'sleepLogs', 'hydrationLogs', 'mealLogs', 'activityLogs', 'cognitiveTests', 'medicationLogs', 'wearableSessions']
+          && request.resource.data.uid == uid;
+        // Corrections are appended as new records, never silent edits.
+        allow update, delete: if false;
+      }
+    }
+
+    match /missions/{missionId} {
+      allow read: if isMissionMember(missionId);
+      allow write: if false; // admin changes go through audited server actions
+
+      match /crew/{uid} {
+        allow read: if isMissionMember(missionId);
+        allow write: if false;
+      }
+      // Medical-only mission collections.
+      match /alerts/{id} {
+        allow read: if isMissionMember(missionId) && me().role == 'medical';
+        allow write: if false;
+      }
+      match /carePlans/{id} {
+        allow read: if isMissionMember(missionId) && (me().role == 'medical' || resource.data.crewUid == request.auth.uid);
+        allow write: if false;
+      }
+      match /consultations/{id} {
+        allow read: if isMissionMember(missionId) && (me().role == 'medical' || resource.data.crewUid == request.auth.uid);
+        allow write: if false;
+      }
+      match /messages/{id} {
+        allow read: if isMissionMember(missionId) && (me().role == 'medical' || resource.data.threadId == request.auth.uid);
+        allow write: if false;
+      }
+      match /auditLogs/{id} {
+        allow read: if isMissionMember(missionId) && me().role == 'medical';
+        allow write: if false; // written only by server code
+      }
+      // Operational context visible to mission members.
+      match /missionEvents/{id} {
+        allow read: if isMissionMember(missionId);
+        allow write: if false;
+      }
+      match /environmentReadings/{id} {
+        allow read: if isMissionMember(missionId);
+        allow write: if false;
+      }
+    }
+
+    match /lessons/{id} {
+      allow read: if isActive() && (resource.data.status == 'published' || me().role == 'medical');
+      allow write: if false;
+    }
+
+    // Server-only collections.
+    match /config/{doc} { allow read, write: if false; }
+    match /invites/{code} { allow read, write: if false; }
+    match /authCredentials/{id} { allow read, write: if false; }
+    match /platformAudit/{id} { allow read, write: if false; }
+    match /researchCache/{id} { allow read, write: if false; }
+
+    // Default deny for everything else.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

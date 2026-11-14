@@ -1,26 +1,180 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Antariksha design tokens — soft lavender UI with a violet primary, large rounded cards,
+ * pill buttons and pastel icon tiles. Status colours (teal / amber / coral) are always paired
+ * with icons + text so severity is never communicated by colour alone.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --violet: #6c4cf5;
+  --violet-2: #8b6dff;
+  --violet-3: #a48bff;
+  --lavender: #f1edff;
+  --teal: #20a7a0;
+  --mint: #e4f7f1;
+  --amber: #e9a23b;
+  --coral: #e2677a;
+  --slate: #6b6889;
+  --navy: #1e1b3a;
+  --midnight: #2a2550;
+  --space: #6c4cf5;
+  --ice: #f1edff;
+
+  --bg: #f6f4ff;
+  --surface: #ffffff;
+  --surface-2: #f4f1ff;
+  --line: #ebe7fb;
+  --fg: #1e1b3a;
+  --muted: #6b6889;
+  --primary: #6c4cf5;
+  --primary-fg: #ffffff;
+  --primary-soft: #efeaff;
+  --ok: #138a74;
+  --ok-soft: #e3f8f1;
+  --warn: #9a5b06;
+  --warn-soft: #fff4e0;
+  --danger: #c23d55;
+  --danger-soft: #ffeaee;
+  --ring: #6c4cf5;
+
+  /* pastel tile backgrounds */
+  --tile-violet: #efeaff;
+  --tile-pink: #ffe9ef;
+  --tile-green: #e3f8ec;
+  --tile-amber: #fff3dc;
+  --tile-blue: #e6f0ff;
+  --tile-teal: #e0f6f4;
+
+  --shadow-card: 0 6px 24px -10px rgba(76, 52, 189, 0.18), 0 1px 2px rgba(30, 27, 58, 0.04);
+  --shadow-pop: 0 18px 40px -16px rgba(76, 52, 189, 0.45);
+}
+
+.dark {
+  --bg: #12101f;
+  --surface: #1b1830;
+  --surface-2: #24203f;
+  --line: #2f2a52;
+  --fg: #efedfb;
+  --muted: #aaa5cc;
+  --primary: #9c86ff;
+  --primary-fg: #16132a;
+  --primary-soft: #2c2558;
+  --ok: #4fd1b5;
+  --ok-soft: #123129;
+  --warn: #f0b85e;
+  --warn-soft: #3a2b12;
+  --danger: #ff8fa1;
+  --danger-soft: #3d1c26;
+  --ring: #b3a3ff;
+  --tile-violet: #2c2558;
+  --tile-pink: #3a2030;
+  --tile-green: #173328;
+  --tile-amber: #3a2d14;
+  --tile-blue: #1c2a48;
+  --tile-teal: #15322f;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-navy: var(--navy);
+  --color-midnight: var(--midnight);
+  --color-space: var(--space);
+  --color-ice: var(--ice);
+  --color-teal: var(--teal);
+  --color-mint: var(--mint);
+  --color-amber: var(--amber);
+  --color-coral: var(--coral);
+  --color-slate: var(--slate);
+  --color-violet: var(--violet);
+  --color-violet-2: var(--violet-2);
+  --color-lavender: var(--lavender);
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-soft: var(--primary-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-ring: var(--ring);
+  --color-tile-violet: var(--tile-violet);
+  --color-tile-pink: var(--tile-pink);
+  --color-tile-green: var(--tile-green);
+  --color-tile-amber: var(--tile-amber);
+  --color-tile-blue: var(--tile-blue);
+  --color-tile-teal: var(--tile-teal);
+
+  --font-sans: var(--font-poppins);
   --font-mono: var(--font-geist-mono);
+  --radius-card: 22px;
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-poppins), system-ui, sans-serif;
+}
+
+/* Soft hero gradient used on highlight cards (reference style). */
+.hero-gradient {
+  background: radial-gradient(120% 140% at 100% 0%, #a48bff 0%, #7c5cff 45%, #6c4cf5 100%);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--line) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
 }

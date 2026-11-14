@@ -1,0 +1,24 @@
+rules_version = '2';
+
+// Symptom-report attachments: users/{uid}/symptoms/{reportId}/{file}
+// Only the author can upload (images/PDF, ≤ 10 MB); author and assigned medical officer can read.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function me() { return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data; }
+    function subject(uid) { return firestore.get(/databases/(default)/documents/users/$(uid)).data; }
+    function isAssignedMedical(uid) {
+      return request.auth != null && me().status == 'active' && me().role == 'medical'
+        && me().missionId != null && subject(uid).missionId == me().missionId && subject(uid).role == 'astronaut';
+    }
+
+    match /users/{uid}/symptoms/{reportId}/{file} {
+      allow read: if (request.auth != null && request.auth.uid == uid) || isAssignedMedical(uid);
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 10 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf');
+      allow update, delete: if false;
+    }
+
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

@@ -1,0 +1,169 @@
+{
+ "name": "Antariksha physiological-state indicator",
+ "version": "1.0.0",
+ "status": "experimental",
+ "trainedAt": "2026-11-14T06:11:29.353Z",
+ "algorithm": "Multinomial logistic regression (softmax, L2, class-weighted), 30 s windows, 15 s hop",
+ "classes": [
+  "Relax",
+  "PhysicalStress",
+  "CognitiveStress",
+  "EmotionalStress"
+ ],
+ "features": [
+  "hr_delta",
+  "spo2_delta",
+  "eda_delta_z",
+  "eda_slope",
+  "temp_delta",
+  "temp_slope",
+  "motion_mean",
+  "motion_sd"
+ ],
+ "featureDescriptions": {
+  "hr_delta": "Heart rate minus personal relaxed baseline (bpm)",
+  "spo2_delta": "SpO₂ minus personal relaxed baseline (%)",
+  "eda_delta_z": "Electrodermal activity (sweat response) vs baseline, in baseline SDs",
+  "eda_slope": "Electrodermal activity trend within the window (baseline SDs / min)",
+  "temp_delta": "Skin temperature minus personal baseline (°C)",
+  "temp_slope": "Skin temperature trend within the window (°C / min)",
+  "motion_mean": "Mean movement intensity vs baseline (baseline SDs)",
+  "motion_sd": "Movement variability vs baseline (baseline SDs)"
+ },
+ "standardisation": {
+  "mu": [
+   4.891759162796219,
+   0.2652399435516139,
+   16.837847655775775,
+   -0.014995034840040378,
+   2.3842627043134432,
+   0.1415074265800917,
+   -1.111428512057218,
+   2.0904689874526152
+  ],
+  "sigma": [
+   11.353206696887261,
+   1.3627295641659558,
+   27.369952727137264,
+   7.171125239728126,
+   1.5149575949911118,
+   0.32209636923317586,
+   5.981771070964069,
+   4.258585852380761
+  ]
+ },
+ "weights": [
+  [
+   -1.6001549536867672,
+   -0.3207159946564356,
+   0.44634856011499613,
+   -0.3176868440133469,
+   -0.182515890336505,
+   0.4993846047514138,
+   0.5128681923897448,
+   -1.365391894796674
+  ],
+  [
+   1.853935889882729,
+   -0.34954958065686365,
+   -1.1671274666797147,
+   0.2880609244857426,
+   -0.7012375714016325,
+   0.12204432621354887,
+   0.06533201380392385,
+   0.796746635872301
+  ],
+  [
+   0.6949156585008378,
+   0.6664628994927172,
+   0.41267978041464887,
+   0.17862815485334418,
+   0.36000827844365746,
+   0.03712361435033501,
+   -0.255493368076288,
+   0.04840006190565201
+  ],
+  [
+   -0.948696594696799,
+   0.003802675820582289,
+   0.30809912615006907,
+   -0.14900223532574058,
+   0.5237451832944805,
+   -0.6585525453152977,
+   -0.32270683811738266,
+   0.5202451970187186
+  ]
+ ],
+ "bias": [
+  0.26594333819503385,
+  -1.1722295901813067,
+  0.4957714424795011,
+  0.41051480950677205
+ ],
+ "evaluation": {
+  "method": "Leave-one-subject-out cross-validation",
+  "windows": 2849,
+  "subjects": 20,
+  "classCounts": {
+   "Relax": 1509,
+   "PhysicalStress": 400,
+   "CognitiveStress": 441,
+   "EmotionalStress": 499
+  },
+  "accuracy": 0.6809406809406809,
+  "balancedAccuracy": 0.6579246189721468,
+  "recall": {
+   "Relax": 0.7335984095427436,
+   "PhysicalStress": 0.8475,
+   "CognitiveStress": 0.5215419501133787,
+   "EmotionalStress": 0.5290581162324649
+  },
+  "precision": {
+   "Relax": 0.8614785992217899,
+   "PhysicalStress": 0.7047817047817048,
+   "CognitiveStress": 0.512249443207127,
+   "EmotionalStress": 0.416403785488959
+  },
+  "confusion": [
+   [
+    1107,
+    48,
+    100,
+    254
+   ],
+   [
+    14,
+    339,
+    38,
+    9
+   ],
+   [
+    50,
+    54,
+    230,
+    107
+   ],
+   [
+    114,
+    40,
+    81,
+    264
+   ]
+  ]
+ },
+ "dataset": {
+  "name": "Non-EEG Dataset for Assessment of Neurological Status (v1.0.0)",
+  "authors": "Birjandtalab J, Cogan D, Pouyan MB, Nourani M",
+  "publisher": "PhysioNet",
+  "url": "https://physionet.org/content/noneeg/1.0.0/",
+  "doi": "https://doi.org/10.13026/C2J01F",
+  "licence": "Open Data Commons Attribution License v1.0",
+  "population": "20 healthy adult volunteers, laboratory protocol on Earth"
+ },
+ "limitations": [
+  "Trained on 20 healthy volunteers on Earth with scripted stressors — not astronauts, not microgravity.",
+  "Indicates which lab stage the signal pattern most resembles; it does not measure stress, illness or performance.",
+  "Not a medical device, not diagnostic, and must never be used for fitness-for-duty or mission decisions.",
+  "Requires a personal relaxed baseline from the same sensor; outputs are unreliable without one."
+ ]
+}
