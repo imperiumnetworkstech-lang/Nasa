@@ -7,7 +7,7 @@ export function PublicHeader() {
   return (
     <header className="border-b border-line bg-surface/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Wordmark />
+        <Wordmark tagline={false} />
         <nav aria-label="Public" className="flex items-center gap-1 text-sm">
           <Link href="/privacy" className="hidden rounded-lg px-3 py-2 text-muted hover:text-fg sm:inline">
             Privacy & safety
