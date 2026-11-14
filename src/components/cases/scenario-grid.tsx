@@ -43,7 +43,9 @@ export function ScenarioGrid({ scenarios, crewUid, mode }: { scenarios: Scenario
           /* ignore */
         }
       }
-      if (c.analysis.severity !== "normal") playAlarm(6000);
+      // The console only confirms with a chime; the siren sounds on the doctor and commander portals
+      // (and briefly on the astronaut's own device when they trigger it themselves).
+      if (c.analysis.severity !== "normal" && mode === "crew") playAlarm(6000);
       else playChime();
       toast({
         tone: c.analysis.severity === "normal" ? "success" : "error",

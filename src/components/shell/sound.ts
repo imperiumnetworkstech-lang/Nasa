@@ -102,37 +102,77 @@ export function playChime() {
   tone(c, 1318.5, t + 0.16, 0.3, 0.18, "sine");
 }
 
-let alarmTimer: ReturnType<typeof setInterval> | null = null;
+let sirenNodes: { oscs: OscillatorNode[]; gain: GainNode } | null = null;
 let alarmStop: ReturnType<typeof setTimeout> | null = null;
 
-function alarmBurst(c: Ctx) {
-  const t = c.currentTime + 0.02;
-  for (let i = 0; i < 8; i++) tone(c, i % 2 ? 660 : 990, t + i * 0.2, 0.19, 0.22, "square");
-}
-
 /**
- * Emergency siren: repeating two-tone bursts until stopAlarm() is called (or maxMs passes).
- * Also vibrates on phones.
+ * Emergency SIREN (ambulance-style wail): a continuous tone that sweeps smoothly up and down
+ * between ~650 Hz and ~1500 Hz about every 1.6 s, with a slightly detuned second voice for a
+ * fuller sound. Keeps wailing until stopAlarm() is called or maxMs passes. Vibrates on phones.
  */
-export function playAlarm(maxMs = 20_000) {
+export function playAlarm(maxMs = 30_000) {
   if (!soundEnabled()) return;
   const c = getCtx();
   if (!c) return;
   if (c.state !== "running") void c.resume();
   stopAlarm();
-  alarmBurst(c);
-  alarmTimer = setInterval(() => alarmBurst(c), 2400);
-  alarmStop = setTimeout(stopAlarm, maxMs);
+  const start = c.currentTime + 0.02;
+  const end = start + maxMs / 1000;
+  const gain = c.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.2, start + 0.15);
+  gain.gain.setValueAtTime(0.2, end - 0.3);
+  gain.gain.exponentialRampToValueAtTime(0.0001, end);
+  // Soften the harsh edges of the sawtooth.
+  const filter = c.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 3200;
+  filter.connect(gain).connect(c.destination);
+  const oscs = [0, 7].map((detune) => {
+    const o = c.createOscillator();
+    o.type = "sawtooth";
+    o.detune.value = detune;
+    const LOW = 650;
+    const HIGH = 1500;
+    const HALF = 0.8; // seconds up, then seconds down
+    o.frequency.setValueAtTime(LOW, start);
+    for (let t = start; t < end; t += HALF * 2) {
+      o.frequency.linearRampToValueAtTime(HIGH, Math.min(end, t + HALF));
+      o.frequency.linearRampToValueAtTime(LOW, Math.min(end, t + HALF * 2));
+    }
+    o.connect(filter);
+    o.start(start);
+    o.stop(end + 0.05);
+    return o;
+  });
+  sirenNodes = { oscs, gain };
+  alarmStop = setTimeout(stopAlarm, maxMs + 200);
   try {
-    navigator.vibrate?.([400, 150, 400, 150, 400]);
+    navigator.vibrate?.([600, 200, 600, 200, 600, 200, 600]);
   } catch {
     /* ignore */
   }
 }
 
 export function stopAlarm() {
-  if (alarmTimer) clearInterval(alarmTimer);
   if (alarmStop) clearTimeout(alarmStop);
-  alarmTimer = null;
   alarmStop = null;
+  if (sirenNodes && ctx) {
+    const { oscs, gain } = sirenNodes;
+    const now = ctx.currentTime;
+    try {
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      oscs.forEach((o) => o.stop(now + 0.15));
+    } catch {
+      /* already stopped */
+    }
+  }
+  sirenNodes = null;
+  try {
+    navigator.vibrate?.(0);
+  } catch {
+    /* ignore */
+  }
 }
