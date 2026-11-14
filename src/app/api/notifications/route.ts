@@ -9,7 +9,7 @@ export async function GET() {
   const unread = (await listNotifications(user.uid)).filter((n) => !n.readAt);
   const latest = unread[0];
   return NextResponse.json(
-    { count: unread.length, latest: latest ? { id: latest.id, title: latest.title, body: latest.body } : null },
+    { count: unread.length, latest: latest ? { id: latest.id, title: latest.title, body: latest.body, emergency: latest.priority === "emergency" } : null },
     { headers: { "cache-control": "no-store" } },
   );
 }

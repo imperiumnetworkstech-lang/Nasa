@@ -34,7 +34,7 @@ test("a new user can register, log out and log back in", async ({ page }) => {
 });
 
 test("roles route to the correct dashboards and are blocked elsewhere", async ({ page }) => {
-  await enterDemo(page, "Flight surgeon");
+  await enterDemo(page, "Base-station doctor");
   await expect(page).toHaveURL(/\/app\/medical\/dashboard/);
   await page.goto("/app/crew/dashboard");
   await expect(page.getByText("This area is not available for your role")).toBeVisible();
@@ -46,15 +46,6 @@ test("roles route to the correct dashboards and are blocked elsewhere", async ({
   await expect(page.getByText("This area is not available for your role")).toBeVisible();
 });
 
-test("astronaut submits a daily check-in and sees it", async ({ page }) => {
-  await enterDemo(page, "Crew member");
-  await page.goto("/app/crew/check-in");
-  for (const legend of ["Overall, how do you feel?", "Fatigue", "Stress", "Pain or discomfort"]) {
-    await page.getByRole("group", { name: legend }).getByText("2", { exact: true }).click();
-  }
-  await page.getByRole("button", { name: "Save check-in" }).click();
-  await expect(page.getByText("Check-in saved. Thank you!")).toBeVisible();
-});
 
 test("astronaut navigation hides research and data tooling", async ({ page }) => {
   await enterDemo(page, "Crew member");
@@ -73,7 +64,7 @@ test("offline entries are visibly queued, not falsely delivered", async ({ page,
 });
 
 test("medical officer responds to an alert in one tap, with undo and audit trail", async ({ page }) => {
-  await enterDemo(page, "Flight surgeon");
+  await enterDemo(page, "Base-station doctor");
   await page.goto("/app/medical/alerts?status=open");
   const first = page.locator("section[id^='al_']").first();
   await expect(first).toBeVisible();
@@ -92,19 +83,7 @@ test("medical officer responds to an alert in one tap, with undo and audit trail
   await expect(page.getByText("alert.reopen").first()).toBeVisible();
 });
 
-test("admin creates an invite code in a couple of taps", async ({ page }) => {
-  await enterDemo(page, "Administrator");
-  await expect(page.getByRole("heading", { name: "People" })).toBeVisible();
-  await page.getByRole("button", { name: "Create invite code" }).click();
-  await expect(page.getByText(/Share this code: AST-/).first()).toBeVisible();
-});
 
-test("researcher can search NASA OSDR (live or labelled fallback)", async ({ page }) => {
-  await enterDemo(page, "Researcher");
-  await page.goto("/app/research/datasets?q=heart");
-  await expect(page.getByText(/studies/).first()).toBeVisible();
-  await expect(page.getByText(/Source:/).first()).toBeVisible();
-});
 
 test("notification bell shows a red count and clears once opened", async ({ page }) => {
   await enterDemo(page, "Crew member");
@@ -118,7 +97,7 @@ test("notification bell shows a red count and clears once opened", async ({ page
 });
 
 test("every role has a short main menu", async ({ page }) => {
-  for (const role of ["Crew member", "Flight surgeon", "Mission commander", "Researcher", "Administrator"]) {
+  for (const role of ["Crew member", "Base-station doctor", "Mission commander"]) {
     await page.context().clearCookies();
     await enterDemo(page, role);
     await page.setViewportSize({ width: 1280, height: 800 });

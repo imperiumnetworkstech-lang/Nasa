@@ -126,6 +126,11 @@ service cloud.firestore {
         allow read: if isMissionMember(missionId) && me().role == 'medical';
         allow write: if false; // written only by server code
       }
+      // Health cases from the vitals model: the astronaut (own only), base-station doctors and the commander.
+      match /cases/{id} {
+        allow read: if isMissionMember(missionId) && (me().role == "medical" || me().role == "commander" || resource.data.crewUid == request.auth.uid);
+        allow write: if false; // created by the server from suit readings; reviewed via server actions
+      }
       // Ask the Doctor: crew read their own questions; medical officers on the mission read all.
       match /questions/{id} {
         allow read: if isMissionMember(missionId) && (me().role == 'medical' || resource.data.crewUid == request.auth.uid);

@@ -22,7 +22,6 @@ const MENUS: Record<Role, { main: NavItem[]; more: NavItem[] }> = {
   astronaut: {
     main: [
       { href: "/app/crew/dashboard", label: "Home", icon: "LayoutDashboard", description: "How am I doing today?" },
-      { href: "/app/crew/check-in", label: "Check-in", icon: "ClipboardCheck", description: "Daily one-minute check-in" },
       { href: "/app/crew/health", label: "My body", icon: "HeartPulse", description: "Heart, oxygen, sweat, temperature" },
       { href: "/app/crew/symptoms", label: "Get help", icon: "Stethoscope", description: "Tell the doctor how you feel" },
       { href: "/app/crew/ask", label: "Ask the doctor", icon: "MessageCircleQuestion", description: "Send a question, see where it is" },
@@ -55,7 +54,6 @@ const MENUS: Record<Role, { main: NavItem[]; more: NavItem[] }> = {
       { href: "/app/medical/mission-timeline", label: "Mission timeline", icon: "CalendarRange" },
       { href: "/app/medical/audit-log", label: "Audit log", icon: "ScrollText" },
       { href: "/app/knowledge", label: "Crew lessons", icon: "Lightbulb" },
-      { href: "/app/research", label: "Research", icon: "Telescope" },
       { href: "/app/help", label: "Help", icon: "LifeBuoy" },
     ],
   },
@@ -68,7 +66,6 @@ const MENUS: Record<Role, { main: NavItem[]; more: NavItem[] }> = {
     ],
     more: [
       { href: "/app/knowledge", label: "Crew lessons", icon: "Lightbulb" },
-      { href: "/app/research", label: "Research", icon: "Telescope" },
       { href: "/app/help", label: "Help", icon: "LifeBuoy" },
     ],
   },

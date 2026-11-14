@@ -46,6 +46,22 @@ To regenerate demo data with today's dates: **Admin → Settings → Regenerate 
 
 **Shared** — notifications, profile & preferences (units, timezone, theme, hydration target, reminders), help & safety, crew knowledge capture (medical approves before publishing), global search (Ctrl+K), Antariksha Guide assistant (local and deterministic by default), offline queue with visible "Queued — not sent" state, PWA shell.
 
+## Suit health model & scenarios (demo flow for judges)
+
+Three roles take part: **crew (astronaut)**, **base-station doctor**, and **mission commander**.
+
+1. **Suit reading → model.** Each reading has 8 parameters: heart rate, SpO₂, blood pressure (top/bottom), body temperature, skin temperature, breathing rate and sweat level (EDA). The vitals model (`src/lib/ml/vitals-model.json`, trained by `npm run ml:vitals`) gives a % for each of 9 conditions, and every parameter is checked against its normal range with a "% above/below" figure.
+2. **Normal ranges** come from clinical norms adjusted with spaceflight research: blood pressure ~8–10 mmHg lower and heart rate unchanged in orbit (Norsk et al. 2015); resting core temperature ~1 °C higher (Stahn et al. 2017), so the fever line is 38.3 °C; ISS air is sea-level equivalent, so SpO₂ should be 95–100% (high is fine); sweat level is judged against a resting level because there's no universal norm; and fluid loading with salt is NASA's countermeasure for low blood pressure. See `src/lib/ml/vitals-reference.ts`.
+3. **Each condition** comes with immediate precautions for the astronaut, remedy steps, and named kit medicines (`src/lib/ml/condition-guide.ts`). They're shown to everyone straight away. The doctor can **add** more medicines, steps or a note. Emergency injectables and prescription-only drugs are labelled as such.
+4. **Scenarios** (`src/lib/scenarios.ts`) stand in for the suit feed: All normal, Low heart rate, Oxygen problem, Sweat level issue, High heart rate, High temperature, High blood pressure, Low blood pressure, Fast breathing.
+5. **What happens on an abnormal reading:**
+   - The crew member hears an alarm and gets a pop-up with "Do this now".
+   - The doctor and commander portals sound an emergency siren within ~5 s and show the case: astronaut, condition, remedy and medicine.
+   - An **All normal** reading closes the astronaut's open case, and the commander sees them as **Normal**.
+6. **Scenario console:** `/console` (demo mode only, no sign-in). Pick any astronaut, tap a scenario, and watch the live crew status board. To watch all three views at once, open them on different addresses: `localhost:3000` (crew), `127.0.0.1:3000` (doctor), `[::1]:3000` (commander).
+
+The model is trained on examples generated from those ranges, because no public labelled astronaut suit dataset exists. Held-out accuracy is 99.8%, which is expected when labels come from the same ranges; real suit data would score lower. Retrain with doctor-labelled data via `npm run ml:vitals -- --csv file.csv`.
+
 ## Research-backed features (gaps with no existing crew tool found)
 
 Each feature targets a documented long-duration-mission problem. Before building, we searched for existing tools; where something similar already existed (circadian lighting apps, the TEAMSTaR team-dynamics dashboard, a vendor's ISS medicine-expiry forecaster) we did **not** build it.

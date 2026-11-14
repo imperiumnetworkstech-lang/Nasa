@@ -4,7 +4,6 @@ import { expect, test } from "@playwright/test";
 const ROUTES: Record<string, string[]> = {
   "Crew member": [
     "/app/crew/dashboard",
-    "/app/crew/check-in",
     "/app/crew/health",
     "/app/crew/health?show=sweat",
     "/app/crew/sleep",
@@ -23,7 +22,7 @@ const ROUTES: Record<string, string[]> = {
     "/app/profile",
     "/app/help",
   ],
-  "Flight surgeon": [
+  "Base-station doctor": [
     "/app/medical/dashboard",
     "/app/medical/crew",
     "/app/medical/crew/demo-crew-2",
@@ -39,13 +38,8 @@ const ROUTES: Record<string, string[]> = {
     "/app/medical/questions",
     "/app/medical/skills",
     "/app/knowledge",
-    "/app/research",
-    "/app/research/insights",
-    "/app/research/methodology",
   ],
   "Mission commander": ["/app/mission/dashboard", "/app/mission/crew-readiness", "/app/mission/timeline", "/app/mission/operations"],
-  Researcher: ["/app/research", "/app/research/datasets", "/app/research/datasets/OSD-87", "/app/research/insights", "/app/research/methodology"],
-  Administrator: ["/app/admin/users", "/app/admin/missions", "/app/admin/roles", "/app/admin/settings"],
 };
 
 for (const [role, routes] of Object.entries(ROUTES)) {
@@ -66,7 +60,7 @@ for (const [role, routes] of Object.entries(ROUTES)) {
 
 test("medical officer cannot open crew from another mission (not found, no data)", async ({ page }) => {
   await page.goto("/login");
-  await page.getByRole("button", { name: /Flight surgeon/i }).click();
+  await page.getByRole("button", { name: /Base-station doctor/i }).click();
   await page.waitForURL(/\/app\//);
   await page.goto("/app/medical/crew/demo-crew-b1");
   await expect(page.getByRole("heading", { name: "404" })).toBeVisible();

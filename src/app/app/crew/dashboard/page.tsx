@@ -1,15 +1,19 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ChevronRight, Dumbbell, Flame, GlassWater, MessageSquare, Moon, Stethoscope, Trophy } from "lucide-react";
+import { ChevronRight, Dumbbell, GlassWater, MessageSquare, Moon, Stethoscope, Trophy } from "lucide-react";
 import { crewContext } from "@/lib/crew/context";
 import { listMissionDocs, listPersonal } from "@/lib/data/repo";
 import { computeBaseline } from "@/lib/health/baseline";
-import { dayKey, fmtDateTime, missionDay, scaleLabel } from "@/lib/utils";
+import { dayKey, fmtDateTime, missionDay, relativeTime } from "@/lib/utils";
 import { Card, CardBody, CardHeader, IconTile, Progress, ViewAll, type TileTone } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { DemoBadge } from "@/components/ui/badge";
 import { QuickFeeling } from "@/components/crew/quick-feeling";
 import { AstronautIllustration } from "@/components/illustrations";
+import { ScenarioGrid } from "@/components/cases/scenario-grid";
+import { CaseView } from "@/components/cases/case-view";
+import { AutoRefresh } from "@/components/cases/live";
+import { SCENARIOS } from "@/lib/scenarios";
 import { getMissionDoc } from "@/lib/data/repo";
 import { deckState } from "@/lib/skills/schedule";
 import { weeklyBalance } from "@/lib/exercise/balance";
@@ -24,13 +28,15 @@ export const metadata: Metadata = { title: "Home" };
  */
 export default async function CrewDashboard() {
   const { user, mission, tz } = await crewContext();
-  const [checkIns, sleep, hydration, activity, symptoms] = await Promise.all([
-    listPersonal(user.uid, "checkIns", { sinceDays: 30 }),
+  const [sleep, hydration, activity, symptoms] = await Promise.all([
     listPersonal(user.uid, "sleepLogs", { sinceDays: 30 }),
     listPersonal(user.uid, "hydrationLogs", { sinceDays: 2 }),
     listPersonal(user.uid, "activityLogs", { sinceDays: 7 }),
     listPersonal(user.uid, "symptomReports", { limit: 10 }),
   ]);
+  const myCases = user.missionId ? await listMissionDocs(user.missionId, "cases", { where: [["crewUid", "==", user.uid]], orderBy: { field: "createdAt", dir: "desc" }, limit: 1 }) : [];
+  const lastCase = myCases[0] ?? null;
+  const activeCase = lastCase?.status === "active" ? lastCase : null;
   const [cards, reviews, exPlan, questions, foodToday] = await Promise.all([
     user.missionId ? listMissionDocs(user.missionId, "skillCards") : Promise.resolve([]),
     listPersonal(user.uid, "skillReviews", { limit: 500 }),
@@ -47,7 +53,6 @@ export default async function CrewDashboard() {
 
   const now = new Date();
   const todayK = dayKey(now.toISOString(), tz);
-  const todayCheckIn = checkIns.find((c) => dayKey(c.at, tz) === todayK);
   const lastSleep = sleep[0];
   const todayMl = hydration.filter((h) => dayKey(h.at, tz) === todayK).reduce((s, h) => s + h.amountMl, 0);
   const target = user.preferences.hydrationTargetMl;
@@ -55,12 +60,6 @@ export default async function CrewDashboard() {
   const first = user.callSign ?? user.displayName.split(" ")[0];
   const sleepBase = computeBaseline(sleep.map((s) => ({ t: s.end, v: s.durationMin / 60 })), { windowDays: 21, minObs: 7, now, excludeLatest: true });
 
-  const ciDays = new Set(checkIns.map((c) => dayKey(c.at, tz)));
-  let streak = 0;
-  for (let i = todayCheckIn ? 0 : 1; i < 30; i++) {
-    if (ciDays.has(dayKey(new Date(now.getTime() - i * 86_400_000).toISOString(), tz))) streak++;
-    else break;
-  }
 
   const openTasks = plans.flatMap((p) => p.tasks.filter((t) => !t.doneAt).map((t) => ({ ...t, plan: p.title }))).sort((a, b) => (a.due ?? "").localeCompare(b.due ?? ""));
   const openSymptoms = symptoms.filter((s) => s.status !== "resolved").length;
@@ -112,25 +111,37 @@ export default async function CrewDashboard() {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {user.isDemo ? <DemoBadge /> : null}
-          <span className="inline-flex items-center gap-1 rounded-full bg-surface px-3 py-1.5 text-sm font-semibold shadow-[var(--shadow-card)]" title="Days in a row with a check-in">
-            <Flame aria-hidden className="h-4 w-4 text-amber" /> {streak}
-            <span className="sr-only">day check-in streak</span>
-          </span>
         </div>
       </div>
 
+      <AutoRefresh seconds={8} />
+      <section className={`relative overflow-hidden rounded-[var(--radius-card)] p-6 text-white shadow-[var(--shadow-pop)] ${activeCase ? (activeCase.analysis.severity === "urgent" ? "bg-[#d64545]" : "bg-[#e08a1e]") : "hero-gradient"}`}>
+        <div className="relative z-10 max-w-[62%] space-y-3">
+          <p className="text-xs font-medium text-white/85">{lastCase ? `Last suit reading ${relativeTime(lastCase.createdAt, now.getTime())}` : "No suit reading yet"}</p>
+          <h2 className="text-xl font-bold leading-snug sm:text-2xl">{activeCase ? `${activeCase.analysis.emoji} ${activeCase.analysis.label}` : "All suit readings normal ✓"}</h2>
+          <ButtonLink href="#suit-check" variant="light" size="sm">
+            Run a suit check <ChevronRight aria-hidden className="h-4 w-4" />
+          </ButtonLink>
+        </div>
+        <AstronautIllustration className="absolute -bottom-4 right-0 h-40 w-40 sm:h-48 sm:w-48" />
+      </section>
+      {activeCase ? (
+        <section className="pop-in rounded-[var(--radius-card)] border-2 border-danger/30 bg-surface p-5 shadow-[var(--shadow-card)]">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-danger">Your current health alert</p>
+          <CaseView c={activeCase} audience="crew" />
+        </section>
+      ) : null}
+
+      <section id="suit-check" className="scroll-mt-20 space-y-3">
+        <div>
+          <h2 className="text-lg font-bold">Suit check</h2>
+          <p className="text-sm text-muted">Tap a scenario to send a suit reading to the health model. Demo data — real readings will come from your suit.</p>
+        </div>
+        <ScenarioGrid scenarios={SCENARIOS.map((x) => ({ id: x.id, title: x.title, emoji: x.emoji, blurb: x.blurb }))} mode="crew" />
+      </section>
+
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="space-y-6">
-          <section className="hero-gradient relative overflow-hidden rounded-[var(--radius-card)] p-6 text-white shadow-[var(--shadow-pop)]">
-            <div className="relative z-10 max-w-[60%] space-y-3">
-              <p className="text-xs font-medium text-white/80">{todayCheckIn ? "Done for today" : "Takes about a minute"}</p>
-              <h2 className="text-xl font-bold leading-snug sm:text-2xl">{todayCheckIn ? `You're feeling ${scaleLabel("overall", todayCheckIn.overall).toLowerCase()}` : "Daily check-in"}</h2>
-              <ButtonLink href="/app/crew/check-in" variant="light" size="sm">
-                {todayCheckIn ? "Update" : "Start check-in"} <ChevronRight aria-hidden className="h-4 w-4" />
-              </ButtonLink>
-            </div>
-            <AstronautIllustration className="absolute -bottom-4 right-0 h-40 w-40 sm:h-48 sm:w-48" />
-          </section>
 
           <Card>
             <CardHeader title="My wellbeing" action={<ViewAll href="/app/crew/history" />} />

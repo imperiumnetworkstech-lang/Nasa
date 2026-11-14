@@ -1,59 +1,53 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { CalendarClock, ClipboardCheck, ShieldAlert } from "lucide-react";
-import { commanderContext, commanderSummary } from "@/lib/mission/context";
-import { listMissionDocs, listPersonal } from "@/lib/data/repo";
-import { detectConflicts } from "@/lib/mission/planner";
-import { skillState } from "@/lib/skills/schedule";
+import { commanderContext } from "@/lib/mission/context";
+import { listMissionDocs } from "@/lib/data/repo";
+import { latestCaseByCrew } from "@/lib/cases";
 import { fmtDateTime, missionDay, requestTime } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/misc";
-import { Card, CardBody, CardHeader, IconTile, Progress, ViewAll, type TileTone } from "@/components/ui/card";
+import { Card, CardBody, CardHeader, ViewAll } from "@/components/ui/card";
 import { DemoBadge } from "@/components/ui/badge";
+import { AutoRefresh } from "@/components/cases/live";
+import { CaseCard, CrewStatusBoard } from "@/components/cases/staff";
 
 export const metadata: Metadata = { title: "Home" };
 
-/** Commander home: three numbers, what's coming up, and (folded) skill readiness. Operational only. */
+/** Mission commander: who is normal, who has an active case (with remedy & medicine), what's next. */
 export default async function MissionHome() {
   const { user, mission, crew, tz } = await commanderContext();
   if (!mission) return <EmptyState title="Not assigned to a mission" />;
   const now = requestTime();
-  const s = await commanderSummary(mission.id, crew.map((c) => c.uid));
-  const events = await listMissionDocs(mission.id, "missionEvents");
-  const conflicts = detectConflicts(events.filter((e) => Date.parse(e.end ?? e.start) > now), crew.map((c) => c.uid), { minRestHours: s.settings.thresholds.minRestHoursBetweenHighWorkload, sleepWindow: { startHour: 22, endHour: 6 } });
-  const upcoming = events.filter((e) => Date.parse(e.start) > now).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 4);
-  const cards = await listMissionDocs(mission.id, "skillCards");
-  const reviews = Object.fromEntries(await Promise.all(crew.map(async (c) => [c.uid, await listPersonal(c.uid, "skillReviews", { limit: 500 })] as const)));
-  const skills = cards.map((card) => ({ title: card.title, fresh: crew.filter((c) => skillState(card, reviews[c.uid], new Date(now)).freshness >= 70).length }));
-
-  const tiles: { href: string; label: string; value: string | number; icon: typeof ClipboardCheck; tone: TileTone }[] = [
-    { href: "/app/mission/crew-readiness", label: "Checked in today", value: `${s.completion}/${crew.length}`, icon: ClipboardCheck, tone: "teal" },
-    { href: "/app/mission/crew-readiness", label: "With the doctor", value: s.operationalOpen, icon: ShieldAlert, tone: s.operationalOpen ? "pink" : "green" },
-    { href: "/app/mission/operations", label: "Schedule clashes", value: conflicts.length, icon: CalendarClock, tone: conflicts.length ? "amber" : "green" },
-  ];
+  const [{ cases, latest }, events] = await Promise.all([latestCaseByCrew(mission.id), listMissionDocs(mission.id, "missionEvents")]);
+  const active = cases.filter((c) => c.status === "active");
+  const normalCount = crew.filter((m) => latest.get(m.uid) && latest.get(m.uid)!.status !== "active").length;
+  const upcoming = events.filter((e) => Date.parse(e.start) > now).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 3);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      <AutoRefresh seconds={5} />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Hello, {user.callSign ?? user.displayName}! 👋</h1>
           <p className="mt-1 text-sm text-muted">
-            {mission.missionCode} · Day {missionDay(mission.startAt)} · {crew.length} crew
+            {mission.missionCode} · Day {missionDay(mission.startAt)} · {normalCount} of {crew.length} crew normal
           </p>
         </div>
         {mission.isDemo ? <DemoBadge /> : null}
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {tiles.map((t) => (
-          <Link key={t.label} href={t.href} className="lift flex flex-col items-start gap-2 rounded-[var(--radius-card)] bg-surface p-4 shadow-[var(--shadow-card)]">
-            <IconTile tone={t.tone} size="sm">
-              <t.icon aria-hidden className="h-4 w-4" />
-            </IconTile>
-            <span className="text-2xl font-bold tabular-nums">{t.value}</span>
-            <span className="text-xs text-muted">{t.label}</span>
-          </Link>
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold">Crew status</h2>
+        <CrewStatusBoard crew={crew} latest={latest} now={now} />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold">
+          Active cases <span className="ml-1 rounded-full bg-[#e5484d] px-2 py-0.5 text-sm text-white">{active.length}</span>
+        </h2>
+        {active.length === 0 ? <p className="rounded-[var(--radius-card)] bg-ok-soft p-5 text-sm font-semibold text-ok">✅ All crew normal.</p> : null}
+        {active.map((c) => (
+          <CaseCard key={c.id} c={c} now={now} editable={false} />
         ))}
-      </div>
+      </section>
 
       <Card>
         <CardHeader title="Coming up" action={<ViewAll href="/app/mission/timeline" />} />
@@ -65,39 +59,8 @@ export default async function MissionHome() {
             </div>
           ))}
           {upcoming.length === 0 ? <p className="text-sm text-muted">Nothing planned.</p> : null}
-          {conflicts.length ? (
-            <Link href="/app/mission/operations" className="block rounded-2xl bg-warn-soft px-3 py-2.5 text-sm text-warn">
-              ⚠️ {conflicts[0].message} <span className="font-semibold">Open schedule →</span>
-            </Link>
-          ) : null}
         </CardBody>
       </Card>
-
-      {skills.length ? (
-        <details className="rounded-[var(--radius-card)] bg-surface shadow-[var(--shadow-card)]">
-          <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 font-semibold">
-            Emergency skill readiness
-            <span className="text-xs font-normal text-muted">
-              {skills.filter((x) => x.fresh >= 2).length} of {skills.length} skills well covered
-            </span>
-          </summary>
-          <div className="grid gap-3 p-5 pt-0 sm:grid-cols-2">
-            {skills.map((x) => (
-              <div key={x.title} className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>{x.title}</span>
-                  <span className={x.fresh >= 2 ? "font-semibold text-ok" : "font-semibold text-warn"}>
-                    {x.fresh}/{crew.length}
-                  </span>
-                </div>
-                <Progress value={(x.fresh / Math.max(1, crew.length)) * 100} tone={x.fresh >= 2 ? "teal" : "amber"} label={x.title} />
-              </div>
-            ))}
-          </div>
-        </details>
-      ) : null}
-
-      <p className="text-center text-xs text-muted">You see operational status only — health details stay with the medical team.</p>
     </div>
   );
 }

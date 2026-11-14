@@ -50,8 +50,36 @@ export function playChime() {
 }
 
 /**
- * Bell with a red count badge. Checks for new notifications every 20 s; when the count goes up
- * it plays a chime and shows a toast. Clicking clears the badge and opens the notification list.
+ * Emergency alarm: a loud alternating two-tone buzz (~2 s), like a medical monitor alarm.
+ * Used when an abnormal suit reading comes in.
+ */
+export function playAlarm(durationMs = 2200) {
+  if (!soundEnabled()) return;
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.16;
+    gain.connect(ctx.destination);
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    const steps = Math.floor(durationMs / 220);
+    for (let i = 0; i < steps; i++) osc.frequency.setValueAtTime(i % 2 ? 660 : 990, ctx.currentTime + i * 0.22);
+    gain.gain.setValueAtTime(0.16, ctx.currentTime + durationMs / 1000 - 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + durationMs / 1000);
+    osc.connect(gain);
+    osc.start();
+    osc.stop(ctx.currentTime + durationMs / 1000);
+    if ("vibrate" in navigator) navigator.vibrate?.([300, 150, 300, 150, 300]);
+    setTimeout(() => void ctx.close(), durationMs + 300);
+  } catch {
+    /* audio not available */
+  }
+}
+
+/**
+ * Bell with a red count badge. Checks for new notifications every 5 s; when the count goes up
+ * it plays a chime (or the emergency alarm for abnormal suit readings) and shows a toast. Clicking clears the badge and opens the notification list.
  */
 export function NotificationBell({ initialCount }: { initialCount: number }) {
   const [count, setCount] = useState(initialCount);
@@ -63,10 +91,15 @@ export function NotificationBell({ initialCount }: { initialCount: number }) {
     try {
       const res = await fetch("/api/notifications", { cache: "no-store" });
       if (!res.ok) return;
-      const j = (await res.json()) as { count: number; latest: { title: string; body: string } | null };
+      const j = (await res.json()) as { count: number; latest: { title: string; body: string; emergency?: boolean } | null };
       if (j.count > last.current && j.latest) {
-        playChime();
-        toast({ tone: "info", title: j.latest.title, body: j.latest.body });
+        if (j.latest.emergency) {
+          playAlarm();
+          toast({ tone: "error", title: j.latest.title, body: j.latest.body, durationMs: 10000 });
+        } else {
+          playChime();
+          toast({ tone: "info", title: j.latest.title, body: j.latest.body });
+        }
       }
       last.current = j.count;
       setCount(j.count);
@@ -76,7 +109,8 @@ export function NotificationBell({ initialCount }: { initialCount: number }) {
   }, []);
 
   useEffect(() => {
-    const t = setInterval(check, 20_000);
+    // Check often so emergencies reach the doctor and commander within seconds.
+    const t = setInterval(check, 5_000);
     const onFocus = () => void check();
     window.addEventListener("focus", onFocus);
     return () => {

@@ -33,6 +33,8 @@ import type {
   WearableSession,
 } from "@/lib/types";
 import type { DocStore } from "./store";
+import { analyzeVitals } from "@/lib/ml/vitals-model";
+import { GUIDE } from "@/lib/ml/condition-guide";
 
 /**
  * Generates SYNTHETIC demo data. All people are fictional, all records are marked
@@ -67,19 +69,16 @@ export const DEMO_PEOPLE: DemoPerson[] = [
   { uid: "demo-crew-5", displayName: "Sofia Lindqvist", callSign: "Rigel", role: "astronaut", missionId: DEMO_MISSION_ID, email: "rigel@demo.antariksha.test" },
   { uid: "demo-medical", displayName: "Dr. Priya Natarajan", callSign: "Surgeon", role: "medical", missionId: DEMO_MISSION_ID, email: "surgeon@demo.antariksha.test" },
   { uid: "demo-commander", displayName: "Elena Kovac", callSign: "Polaris", role: "commander", missionId: DEMO_MISSION_ID, email: "polaris@demo.antariksha.test" },
-  { uid: "demo-researcher", displayName: "Dr. Samuel Achebe", callSign: "Analyst", role: "researcher", missionId: DEMO_MISSION_ID, email: "analyst@demo.antariksha.test" },
-  { uid: "demo-admin", displayName: "Platform Admin", callSign: "Ops", role: "admin", missionId: DEMO_MISSION_ID, email: "admin@demo.antariksha.test" },
   // Second mission: used to demonstrate (and test) that there is no cross-mission access.
   { uid: "demo-crew-b1", displayName: "Noor Haddad", callSign: "Deneb", role: "astronaut", missionId: DEMO_MISSION_B_ID, email: "deneb@demo.antariksha.test" },
   { uid: "demo-medical-b", displayName: "Dr. Tomás Varga", callSign: "Medic-B", role: "medical", missionId: DEMO_MISSION_B_ID, email: "medic-b@demo.antariksha.test" },
 ];
 
-export const DEMO_ROLE_UID: Record<Role, string> = {
+/** Demo sign-in only exists for the three roles the mission uses: crew, base-station doctor, commander. */
+export const DEMO_ROLE_UID: Partial<Record<Role, string>> = {
   astronaut: "demo-crew-1",
   medical: "demo-medical",
   commander: "demo-commander",
-  researcher: "demo-researcher",
-  admin: "demo-admin",
 };
 
 const DAYS = 35;
@@ -167,7 +166,7 @@ export async function seedDemoData(store: DocStore, now: Date): Promise<void> {
   // Demo shows communication-delay mode: 8 minutes one-way, continuous link.
   put("config/platform", { ...DEFAULT_SETTINGS, commDelaySeconds: 480, updatedAt: iso(now), updatedBy: "seed" });
   const invites: Invite[] = [
-    { code: "DEMO-CREW", role: "astronaut", missionId: DEMO_MISSION_ID, usesLeft: 50, createdBy: "demo-admin", createdAt: iso(now) },
+    { code: "DEMO-CREW", role: "astronaut", missionId: DEMO_MISSION_ID, usesLeft: 50, createdBy: "demo-medical", createdAt: iso(now) },
   ];
   for (const inv of invites) put(`invites/${inv.code}`, inv);
 
@@ -748,7 +747,7 @@ export async function seedDemoData(store: DocStore, now: Date): Promise<void> {
 
   // Notifications
   const nts: AppNotification[] = [
-    { id: id("nt"), uid: "demo-crew-1", kind: "check_in", title: "Daily check-in", body: "Your check-in for today is ready when you are.", href: "/app/crew/check-in", createdAt: iso(atDay(0, 7)), readAt: null },
+    { id: id("nt"), uid: "demo-crew-1", kind: "check_in", title: "Suit check", body: "Run a suit check from your home screen any time.", href: "/app/crew/dashboard", createdAt: iso(atDay(0, 7)), readAt: null },
     { id: id("nt"), uid: "demo-crew-1", kind: "care_plan", title: "Care plan task due", body: "Daily 10-minute mobility routine", href: "/app/crew/my-plan", createdAt: iso(atDay(0, 8)), readAt: null },
     { id: id("nt"), uid: "demo-crew-2", kind: "medical_review", title: "Symptom report in review", body: "Your headache report is being reviewed.", href: "/app/crew/symptoms", createdAt: iso(atDay(0, 10)), readAt: null },
     { id: id("nt"), uid: "demo-crew-2", kind: "medication", title: "Medication reminder", body: "Demo Medication A — morning", href: "/app/crew/medications", createdAt: iso(atDay(0, 7)), readAt: null },
@@ -865,6 +864,35 @@ export async function seedDemoData(store: DocStore, now: Date): Promise<void> {
     readAt: null,
     origin: "simulated",
   });
+
+  // ---------- Health cases: everyone starts "normal" from a suit check an hour ago ----------
+  for (const p of crew.filter((c) => c.missionId === DEMO_MISSION_ID)) {
+    const readings = { hr: 64 + Math.round(r() * 8), spo2: 98, sbp: 110 + Math.round(r() * 8), dbp: 70, temp: 37.3, skinTemp: 33, rr: 15, eda: 4 };
+    const name = `${p.displayName} (${p.callSign})`;
+    const a = analyzeVitals(readings, name);
+    const cid = id("case");
+    put(`missions/${DEMO_MISSION_ID}/cases/${cid}`, {
+      id: cid,
+      missionId: DEMO_MISSION_ID,
+      crewUid: p.uid,
+      crewName: name,
+      scenarioId: "all-normal",
+      source: "scenario",
+      createdAt: iso(new Date(now.getTime() - 60 * 60_000)),
+      readings,
+      analysis: { condition: a.condition, label: GUIDE[a.condition].label, emoji: GUIDE[a.condition].emoji, severity: a.severity, confidencePct: a.confidencePct, message: a.message, probabilities: a.probabilities, params: a.params, modelVersion: a.modelVersion },
+      precautions: GUIDE[a.condition].precautions,
+      remedy: GUIDE[a.condition].remedy,
+      medicines: [],
+      medicineStatus: "none",
+      doctorNote: null,
+      reviewedBy: null,
+      reviewedAt: null,
+      status: "normal",
+      resolvedAt: null,
+      origin: "simulated",
+    });
+  }
 
   await store.setMany(entries);
 }

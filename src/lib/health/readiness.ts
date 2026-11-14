@@ -64,7 +64,7 @@ export function readinessFactors(input: {
   const today = now.toISOString().slice(0, 10);
   const ci = [...input.checkIns].sort((a, b) => b.at.localeCompare(a.at))[0];
   if (!ci || ci.at.slice(0, 10) !== today) {
-    factors.push({ name: "Today's check-in", status: "missing", detail: "Not completed yet today.", at: ci?.at ?? null, href: "/app/crew/check-in" });
+    factors.push({ name: "Today's check-in", status: "missing", detail: "Not completed yet today.", at: ci?.at ?? null, href: "/app/crew/dashboard" });
   } else {
     const high = (ci.fatigue ?? 0) >= 4 || (ci.stress ?? 0) >= 4 || (ci.pain ?? 0) >= 4;
     factors.push({
@@ -72,7 +72,7 @@ export function readinessFactors(input: {
       status: high ? "attention" : "usual",
       detail: high ? "You reported high fatigue, stress or pain today." : "Completed — self-reported values within your typical range.",
       at: ci.at,
-      href: "/app/crew/check-in",
+      href: "/app/crew/dashboard",
     });
   }
 

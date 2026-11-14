@@ -21,7 +21,7 @@ test("Ask the doctor: crew sends a question and sees its live journey", async ({
 });
 
 test("Ask the doctor: medical officer cannot read a question that is still travelling", async ({ page }) => {
-  await enterDemo(page, "Flight surgeon");
+  await enterDemo(page, "Base-station doctor");
   await page.goto("/app/medical/questions");
   // The demo question from Vega was sent 3 minutes ago with an 8-minute delay.
   const vega = page.locator("section").filter({ hasText: "Vega" }).first();
@@ -59,7 +59,7 @@ test("Skill Keeper: practise a card and the team grid shows freshness", async ({
     await expect(page.getByRole("status").filter({ hasText: "Practice saved" }).first()).toBeVisible();
   }
   await page.context().clearCookies();
-  await enterDemo(page, "Flight surgeon");
+  await enterDemo(page, "Base-station doctor");
   await page.goto("/app/medical/skills");
   await expect(page.getByText("Team freshness")).toBeVisible();
   await expect(page.getByText(/\d+%/).first()).toBeVisible();

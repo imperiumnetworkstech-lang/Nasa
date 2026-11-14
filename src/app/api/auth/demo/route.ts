@@ -9,7 +9,8 @@ import { clientKey, rateLimit } from "@/lib/auth/rate-limit";
 import { HOME_FOR_ROLE } from "@/lib/permissions";
 import { ROLES } from "@/lib/types";
 
-const body = z.object({ role: z.enum(ROLES) });
+// Either a role (maps to that role's default demo person) or a specific seeded demo account.
+const body = z.union([z.object({ role: z.enum(ROLES) }), z.object({ uid: z.string().regex(/^demo-[a-z0-9-]{1,30}$/) })]);
 
 /**
  * Demo entry: signs in as a seeded, clearly-labelled synthetic account.
@@ -22,8 +23,10 @@ export async function POST(req: Request) {
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Choose a role" }, { status: 400 });
   await getStore(); // ensures the local store is seeded
-  const uid = DEMO_ROLE_UID[parsed.data.role];
+  const uid = "role" in parsed.data ? DEMO_ROLE_UID[parsed.data.role] : parsed.data.uid;
+  if (!uid) return NextResponse.json({ error: "This role isn't part of the demo." }, { status: 400 });
   const user = await getUser(uid);
+  // Only seeded, clearly-marked demo accounts can be entered this way — never real users.
   if (!user || !user.isDemo) {
     return NextResponse.json({ error: "Demo data has not been seeded. Run `npm run seed` or seed from Admin → Settings." }, { status: 409 });
   }

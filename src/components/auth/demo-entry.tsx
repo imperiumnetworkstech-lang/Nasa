@@ -1,15 +1,13 @@
 "use client";
 
-import { FlaskConical, HeartPulse, ShieldCheck, Stethoscope, Telescope, UserCog } from "lucide-react";
+import { FlaskConical, HeartPulse, ShieldCheck, SlidersHorizontal, Stethoscope } from "lucide-react";
 import { useState } from "react";
 import type { Role } from "@/lib/types";
 
 const ROLES: { role: Role; title: string; who: string; icon: typeof HeartPulse }[] = [
   { role: "astronaut", title: "Crew member", who: "Anaya Rao “Vega”", icon: HeartPulse },
-  { role: "medical", title: "Flight surgeon", who: "Dr. Priya Natarajan", icon: Stethoscope },
+  { role: "medical", title: "Base-station doctor", who: "Dr. Priya Natarajan", icon: Stethoscope },
   { role: "commander", title: "Mission commander", who: "Elena Kovac “Polaris”", icon: ShieldCheck },
-  { role: "researcher", title: "Researcher", who: "Dr. Samuel Achebe", icon: Telescope },
-  { role: "admin", title: "Administrator", who: "Platform Admin", icon: UserCog },
 ];
 
 /** Demo-mode role selector. Signs in as seeded synthetic accounts; disabled when demo mode is off. */
@@ -36,7 +34,7 @@ export function DemoEntry({ compact = false }: { compact?: boolean }) {
       <div className="flex items-center gap-2 text-sm font-medium text-warn">
         <FlaskConical aria-hidden className="h-4 w-4" /> Demo mode — fictional people, synthetic data
       </div>
-      <div className={compact ? "grid gap-2 sm:grid-cols-2" : "grid gap-3 sm:grid-cols-2 lg:grid-cols-5"}>
+      <div className={compact ? "grid gap-2" : "grid gap-3 sm:grid-cols-3"}>
         {ROLES.map(({ role, title, who, icon: Icon }) => (
           <button
             key={role}
@@ -54,6 +52,15 @@ export function DemoEntry({ compact = false }: { compact?: boolean }) {
           </button>
         ))}
       </div>
+      <a href="/console" className="lift flex items-center gap-3 rounded-2xl border border-dashed border-primary/40 bg-primary-soft p-3 text-left">
+        <span className="rounded-xl bg-surface p-2 text-primary">
+          <SlidersHorizontal aria-hidden className="h-5 w-5" />
+        </span>
+        <span>
+          <span className="block text-sm font-semibold text-fg">Scenario console</span>
+          <span className="block text-xs text-muted">Send suit scenarios for any astronaut — no sign-in</span>
+        </span>
+      </a>
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}

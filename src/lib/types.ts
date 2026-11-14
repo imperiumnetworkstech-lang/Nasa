@@ -9,7 +9,7 @@ export type Role = (typeof ROLES)[number];
 
 export const ROLE_LABELS: Record<Role, string> = {
   astronaut: "Astronaut / Crew Member",
-  medical: "Flight Surgeon / Medical Officer",
+  medical: "Base-station doctor",
   commander: "Mission Commander",
   researcher: "Researcher / Data Analyst",
   admin: "Platform Administrator",
@@ -447,6 +447,8 @@ export interface AppNotification {
   title: string;
   body: string;
   href?: string;
+  /** "emergency" makes staff portals sound the siren. */
+  priority?: "normal" | "emergency";
   createdAt: ISODate;
   readAt: ISODate | null;
 }
@@ -535,7 +537,42 @@ export interface SkillCard {
   origin: Origin;
 }
 
+/** A health case created when the vitals model analyses a suit reading (scenario or device). */
+export interface HealthCase {
+  id: string;
+  missionId: string;
+  crewUid: string;
+  crewName: string;
+  scenarioId: string | null;
+  source: "scenario" | "device";
+  createdAt: ISODate;
+  readings: Record<string, number>;
+  analysis: {
+    condition: string;
+    label: string;
+    emoji: string;
+    severity: "normal" | "attention" | "urgent";
+    confidencePct: number;
+    message: string;
+    probabilities: { condition: string; label: string; pct: number }[];
+    params: { key: string; label: string; value: number; unit: string; low: number; high: number; status: "low" | "normal" | "high"; deviationPct: number }[];
+    modelVersion: string;
+  };
+  precautions: string[];
+  /** Recommended by the vitals model and shown to everyone immediately. The doctor can add more. */
+  remedy: string[];
+  medicines: { name: string; purpose: string; addedBy?: string }[];
+  medicineStatus: "none" | "recommended";
+  doctorNote: string | null;
+  reviewedBy: string | null;
+  reviewedAt: ISODate | null;
+  status: "active" | "normal" | "resolved";
+  resolvedAt: ISODate | null;
+  origin: Origin;
+}
+
 export interface MissionRecordMap {
+  cases: HealthCase;
   questions: CrewQuestion;
   exercisePlans: ExercisePlan;
   skillCards: SkillCard;

@@ -14,7 +14,8 @@
     "test:rules": "firebase emulators:exec --only firestore \"vitest run --config vitest.rules.config.mts\"",
     "seed": "tsx --conditions=react-server scripts/seed.ts",
     "seed:reset": "tsx --conditions=react-server scripts/seed.ts --reset",
-    "ml:train": "tsx ml/train-physio-state.ts"
+    "ml:train": "tsx ml/train-physio-state.ts",
+    "ml:vitals": "tsx ml/train-vitals-model.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.6",
