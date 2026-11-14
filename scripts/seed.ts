@@ -4,7 +4,11 @@
  *   npm run seed -- --reset → local store only: wipe and re-seed
  * Never run against a project that holds real health data.
  */
+import { loadEnvConfig } from "@next/env";
 import { getStore } from "../src/lib/data";
+
+// Read .env.local / .env like the Next.js app does.
+loadEnvConfig(process.cwd());
 import { getLocalStore } from "../src/lib/data/local-store";
 import { seedDemoData } from "../src/lib/data/seed";
 import { listMissions } from "../src/lib/data/repo";

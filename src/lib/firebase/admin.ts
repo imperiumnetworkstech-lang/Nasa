@@ -13,6 +13,22 @@ export function isAdminConfigured(): boolean {
   );
 }
 
+/**
+ * Accepts the service-account key in any of the forms people paste it in: with literal "\n"
+ * sequences, with real line breaks, wrapped in quotes, or with all line breaks lost (one long
+ * line). Always returns a valid PEM.
+ */
+export function normalizePrivateKey(raw: string): string {
+  let k = raw.trim();
+  if ((k.startsWith('"') && k.endsWith('"')) || (k.startsWith("'") && k.endsWith("'"))) k = k.slice(1, -1);
+  k = k.replace(/\\n/g, "\n").replace(/\r/g, "");
+  const m = k.match(/-----BEGIN ([A-Z ]+)-----([\s\S]*?)-----END \1-----/);
+  if (!m) return k;
+  const body = m[2].replace(/\s+/g, "");
+  const lines = body.match(/.{1,64}/g) ?? [];
+  return `-----BEGIN ${m[1]}-----\n${lines.join("\n")}\n-----END ${m[1]}-----\n`;
+}
+
 let app: App | null = null;
 
 export async function getAdminApp(): Promise<App> {
@@ -27,8 +43,7 @@ export async function getAdminApp(): Promise<App> {
       credential: cert({
         projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Env vars usually store the key with literal "\n" sequences.
-        privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, "\n"),
+        privateKey: normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY!),
       }),
     });
   return app;
