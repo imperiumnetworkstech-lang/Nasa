@@ -12,6 +12,11 @@ import { DemoBadge } from "@/components/ui/badge";
 import { QuickFeeling } from "@/components/crew/quick-feeling";
 import { TrendChart, CHART_COLORS } from "@/components/charts/trend-chart";
 import { AstronautIllustration } from "@/components/illustrations";
+import { getMissionDoc } from "@/lib/data/repo";
+import { deckState } from "@/lib/skills/schedule";
+import { weeklyBalance } from "@/lib/exercise/balance";
+import { questionStage } from "@/lib/questions/eta";
+import { GraduationCap, MessageCircleQuestion, UtensilsCrossed } from "lucide-react";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -28,6 +33,13 @@ export default async function CrewDashboard() {
     listPersonal(user.uid, "hydrationLogs", { sinceDays: 2 }),
     listPersonal(user.uid, "activityLogs", { sinceDays: 7 }),
     listPersonal(user.uid, "symptomReports", { limit: 10 }),
+  ]);
+  const [cards, reviews, exPlan, questions, foodToday] = await Promise.all([
+    user.missionId ? listMissionDocs(user.missionId, "skillCards") : Promise.resolve([]),
+    listPersonal(user.uid, "skillReviews", { limit: 500 }),
+    user.missionId ? getMissionDoc(user.missionId, "exercisePlans", user.uid) : Promise.resolve(null),
+    user.missionId ? listMissionDocs(user.missionId, "questions", { where: [["crewUid", "==", user.uid]] }) : Promise.resolve([]),
+    listPersonal(user.uid, "foodRatings", { sinceDays: 1 }),
   ]);
   const [plans, messages] = user.missionId
     ? await Promise.all([
@@ -56,6 +68,15 @@ export default async function CrewDashboard() {
   const hrSeries = dailySeries(vitals.filter((v) => v.kind === "heart_rate" && v.quality === "valid"), (v) => v.measuredAt, 7, { hr: meanOf((v) => v.value) }, tz);
   const openTasks = plans.flatMap((p) => p.tasks.filter((t) => !t.doneAt).map((t) => ({ ...t, plan: p.title }))).sort((a, b) => (a.due ?? "").localeCompare(b.due ?? ""));
   const openSymptoms = symptoms.filter((s) => s.status !== "resolved").length;
+  // "Today for you": the few things worth doing now, from the new features.
+  const dueSkills = deckState(cards, reviews, now).due.length;
+  const exDebt = exPlan ? weeklyBalance(activity, exPlan, now).reduce((s, b) => s + b.debtMin, 0) : 0;
+  const newAnswers = questions.filter((q) => q.answer && !q.readAt && questionStage(q, now.getTime()) === "answered").length;
+  const todo: { href: string; icon: typeof Moon; tone: TileTone; title: string; sub: string }[] = [];
+  if (newAnswers) todo.push({ href: "/app/crew/ask", icon: MessageCircleQuestion, tone: "blue", title: `${newAnswers} new answer${newAnswers > 1 ? "s" : ""} from your doctor`, sub: "Tap to read" });
+  if (dueSkills) todo.push({ href: "/app/crew/skills", icon: GraduationCap, tone: "violet", title: `${dueSkills} skill${dueSkills > 1 ? "s" : ""} to refresh`, sub: "About 2 minutes" });
+  if (exDebt) todo.push({ href: "/app/crew/activity", icon: Dumbbell, tone: "green", title: `${exDebt} min of exercise to catch up`, sub: "See free slots this week" });
+  if (!foodToday.length) todo.push({ href: "/app/crew/hydration", icon: UtensilsCrossed, tone: "amber", title: "Rate today's meal", sub: "Three taps — keeps your taste radar useful" });
 
   const wellbeing: { href: string; icon: typeof Moon; tone: TileTone; title: string; sub: string; pct: number }[] = [
     {
@@ -79,8 +100,8 @@ export default async function CrewDashboard() {
       icon: Dumbbell,
       tone: "green",
       title: "Exercise",
-      sub: `${weekActivity} min this week`,
-      pct: Math.min(100, (weekActivity / 420) * 100),
+      sub: exPlan ? `${weekActivity} of ${exPlan.resistanceMinPerWeek + exPlan.aerobicMinPerWeek + exPlan.mobilityMinPerWeek} min this week` : `${weekActivity} min this week`,
+      pct: Math.min(100, (weekActivity / (exPlan ? exPlan.resistanceMinPerWeek + exPlan.aerobicMinPerWeek + exPlan.mobilityMinPerWeek : 420)) * 100),
     },
   ];
 
@@ -145,6 +166,25 @@ export default async function CrewDashboard() {
         </div>
 
         <div className="space-y-6">
+          {todo.length ? (
+            <Card>
+              <CardHeader title="Today for you" />
+              <CardBody className="space-y-2">
+                {todo.map((t) => (
+                  <Link key={t.href} href={t.href} className="lift flex items-center gap-3 rounded-2xl bg-surface-2 p-3 text-sm">
+                    <IconTile tone={t.tone} size="sm">
+                      <t.icon aria-hidden className="h-4 w-4" />
+                    </IconTile>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold">{t.title}</span>
+                      <span className="block text-xs text-muted">{t.sub}</span>
+                    </span>
+                    <ChevronRight aria-hidden className="h-4 w-4 text-muted" />
+                  </Link>
+                ))}
+              </CardBody>
+            </Card>
+          ) : null}
           <Card>
             <CardHeader title="Quick mood" description="One tap · private unless you share it" />
             <CardBody>

@@ -8,6 +8,8 @@ import { Callout, EmptyState, PageHeader, Stat } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader, Progress, ViewAll } from "@/components/ui/card";
 import { DemoBadge } from "@/components/ui/badge";
 import Link from "next/link";
+import { listPersonal } from "@/lib/data/repo";
+import { skillState } from "@/lib/skills/schedule";
 
 export const metadata: Metadata = { title: "Mission dashboard" };
 
@@ -17,6 +19,9 @@ export default async function MissionDashboard() {
   const s = await commanderSummary(mission.id, crew.map((c) => c.uid));
   const events = await listMissionDocs(mission.id, "missionEvents");
   const conflicts = detectConflicts(events.filter((e) => Date.parse(e.end ?? e.start) > requestTime()), crew.map((c) => c.uid), { minRestHours: s.settings.thresholds.minRestHoursBetweenHighWorkload, sleepWindow: { startHour: 22, endHour: 6 } });
+  const skillCards = await listMissionDocs(mission.id, "skillCards");
+  const skillReviews = Object.fromEntries(await Promise.all(crew.map(async (c) => [c.uid, await listPersonal(c.uid, "skillReviews", { limit: 500 })] as const)));
+  const skillReady = skillCards.map((card) => ({ title: card.title, fresh: crew.filter((c) => skillState(card, skillReviews[c.uid], new Date(requestTime())).freshness >= 70).length }));
   const upcoming = events.filter((e) => Date.parse(e.start) > requestTime()).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 4);
   return (
     <div className="space-y-6">
@@ -50,6 +55,24 @@ export default async function MissionDashboard() {
           </CardBody>
         </Card>
       </div>
+      {skillReady.length ? (
+        <Card>
+          <CardHeader title="Emergency skill readiness" description="How many crew have practised each skill recently (Skill Keeper)" />
+          <CardBody className="grid gap-2 sm:grid-cols-2">
+            {skillReady.map((s) => (
+              <div key={s.title} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>{s.title}</span>
+                  <span className={s.fresh >= 2 ? "font-semibold text-ok" : "font-semibold text-warn"}>
+                    {s.fresh}/{crew.length} fresh
+                  </span>
+                </div>
+                <Progress value={(s.fresh / Math.max(1, crew.length)) * 100} tone={s.fresh >= 2 ? "teal" : "amber"} label={s.title} />
+              </div>
+            ))}
+          </CardBody>
+        </Card>
+      ) : null}
       {conflicts.length ? (
         <Callout tone="warn" title={`${conflicts.length} schedule conflict(s) to review`}>
           {conflicts[0].message}{" "}

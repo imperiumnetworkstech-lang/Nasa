@@ -5,7 +5,7 @@
  * activity, meals). Items stay visibly "Queued — not sent" until the server confirms them.
  * Symptom reports and messages are never queued: the UI must not imply delivery.
  */
-export const QUEUEABLE = ["checkIns", "hydrationLogs", "sleepLogs", "moodLogs", "activityLogs", "mealLogs"] as const;
+export const QUEUEABLE = ["checkIns", "hydrationLogs", "sleepLogs", "moodLogs", "activityLogs", "mealLogs", "foodRatings", "skillReviews"] as const;
 export type QueueKind = (typeof QUEUEABLE)[number];
 
 export interface QueueItem {

@@ -49,7 +49,7 @@ describe("validation", () => {
   });
 
   it("bounds configurable thresholds", () => {
-    const ok = { commDelaySeconds: 600, privacyMinGroupSize: 3, thresholds: DEFAULT_SETTINGS.thresholds, features: DEFAULT_SETTINGS.features };
+    const ok = { commDelaySeconds: 600, commWindowEveryHours: 0, privacyMinGroupSize: 3, thresholds: DEFAULT_SETTINGS.thresholds, features: DEFAULT_SETTINGS.features };
     expect(settingsSchema.safeParse(ok).success).toBe(true);
     expect(settingsSchema.safeParse({ ...ok, privacyMinGroupSize: 1 }).success).toBe(false);
   });

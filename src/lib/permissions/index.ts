@@ -53,6 +53,8 @@ export function isAssignedMedical(actor: Actor, subject: Subject): boolean {
 
 /** Kinds a crew member may create/edit for themselves. */
 export const SELF_WRITABLE: PersonalKind[] = [
+  "foodRatings",
+  "skillReviews",
   "wearableSessions",
   "checkIns",
   "vitals",

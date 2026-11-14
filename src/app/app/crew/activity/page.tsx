@@ -9,18 +9,26 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DemoBadge } from "@/components/ui/badge";
 import { TrendChart, CHART_COLORS } from "@/components/charts/trend-chart";
 import { ActivityForm } from "@/components/crew/forms";
+import { ExerciseBalance } from "@/components/crew/exercise-balance";
+import { freeSlots, weeklyBalance } from "@/lib/exercise/balance";
+import { getMissionDoc, listMissionDocs } from "@/lib/data/repo";
 
 export const metadata: Metadata = { title: "Exercise" };
 
 export default async function ActivityPage() {
   const { user, tz } = await crewContext();
   const acts = await listPersonal(user.uid, "activityLogs", { sinceDays: 30 });
+  const [plan, events] = user.missionId ? await Promise.all([getMissionDoc(user.missionId, "exercisePlans", user.uid), listMissionDocs(user.missionId, "missionEvents")]) : [null, []];
+  const now = new Date(requestTime());
+  const balance = plan ? weeklyBalance(acts, plan, now) : null;
+  const slots = freeSlots(events, user.uid, now);
   const week = acts.filter((a) => Date.parse(a.at) > requestTime() - 7 * 86_400_000);
   const by = (c: string) => week.filter((a) => a.category === c).reduce((s, a) => s + a.durationMin, 0);
   const demo = acts.some((a) => a.origin === "simulated");
   return (
     <div className="space-y-6">
       <PageHeader title="Exercise & recovery" description="Resistance, aerobic and mobility sessions with soreness and recovery check-ins." crumbs={[{ label: "Home", href: "/app/crew/dashboard" }, { label: "Exercise" }]} badges={demo ? <DemoBadge /> : undefined} />
+      <ExerciseBalance balance={balance} slots={slots} setBy={plan?.setByName ?? null} tz={tz} />
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat tone="violet" icon={<Dumbbell aria-hidden className="h-5 w-5" />} label="Resistance (7 d)" value={by("resistance")} unit="min" />
         <Stat tone="pink" icon={<HeartPulse aria-hidden className="h-5 w-5" />} label="Aerobic (7 d)" value={by("aerobic")} unit="min" />

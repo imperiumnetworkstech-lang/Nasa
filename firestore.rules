@@ -88,9 +88,9 @@ service cloud.firestore {
       // Other personal health records: author writes (immutable once submitted); assigned medical reads.
       match /{kind}/{id} {
         allow read: if (isSelf(uid) || isAssignedMedical(uid))
-          && kind in ['checkIns', 'vitals', 'sleepLogs', 'hydrationLogs', 'mealLogs', 'activityLogs', 'cognitiveTests', 'medicationLogs', 'wearableSessions'];
+          && kind in ['checkIns', 'vitals', 'sleepLogs', 'hydrationLogs', 'mealLogs', 'activityLogs', 'cognitiveTests', 'medicationLogs', 'wearableSessions', 'foodRatings', 'skillReviews'];
         allow create: if isSelf(uid) && isActive()
-          && kind in ['checkIns', 'vitals', 'sleepLogs', 'hydrationLogs', 'mealLogs', 'activityLogs', 'cognitiveTests', 'medicationLogs', 'wearableSessions']
+          && kind in ['checkIns', 'vitals', 'sleepLogs', 'hydrationLogs', 'mealLogs', 'activityLogs', 'cognitiveTests', 'medicationLogs', 'wearableSessions', 'foodRatings', 'skillReviews']
           && request.resource.data.uid == uid;
         // Corrections are appended as new records, never silent edits.
         allow update, delete: if false;
@@ -125,6 +125,21 @@ service cloud.firestore {
       match /auditLogs/{id} {
         allow read: if isMissionMember(missionId) && me().role == 'medical';
         allow write: if false; // written only by server code
+      }
+      // Ask the Doctor: crew read their own questions; medical officers on the mission read all.
+      match /questions/{id} {
+        allow read: if isMissionMember(missionId) && (me().role == 'medical' || resource.data.crewUid == request.auth.uid);
+        allow write: if false; // created/answered via server actions (timing is computed server-side)
+      }
+      // Exercise targets: the crew member and the mission's medical officers.
+      match /exercisePlans/{uid} {
+        allow read: if isMissionMember(missionId) && (me().role == 'medical' || request.auth.uid == uid);
+        allow write: if false;
+      }
+      // Skill Keeper cards are non-sensitive training content for the whole mission.
+      match /skillCards/{id} {
+        allow read: if isMissionMember(missionId);
+        allow write: if false;
       }
       // Operational context visible to mission members.
       match /missionEvents/{id} {

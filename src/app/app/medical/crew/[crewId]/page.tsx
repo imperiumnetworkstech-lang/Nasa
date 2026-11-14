@@ -9,7 +9,12 @@ import { computeDrift } from "@/lib/health/baseline";
 import { dailySeries, meanOf } from "@/lib/health/series";
 import { VITAL_META } from "@/lib/health/vitals";
 import { fmtDateTime, scaleLabel } from "@/lib/utils";
-import { carePlanForm, clinicalNoteForm, medicationForm, symptomStatusForm } from "@/lib/actions/forms";
+import { carePlanForm, clinicalNoteForm, exercisePlanForm, medicationForm, symptomStatusForm } from "@/lib/actions/forms";
+import { getMissionDoc } from "@/lib/data/repo";
+import { weeklyBalance } from "@/lib/exercise/balance";
+import { analyseFood } from "@/lib/food/fatigue";
+import { MENU } from "@/lib/content/menu";
+import { ExerciseBalance } from "@/components/crew/exercise-balance";
 import { PageHeader } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge, DemoBadge, OriginBadge, SeverityBadge, StatusBadge } from "@/components/ui/badge";
@@ -36,6 +41,8 @@ export default async function CrewDetail({ params, searchParams }: PageProps<"/a
   const { user, subject, tz } = await assignedCrewMember(crewId, { auditAction: "record.view" });
   const settings = await getSettings();
   const th = settings.thresholds;
+  const [exPlan, foodRatings, acts8] = await Promise.all([getMissionDoc(user.missionId!, "exercisePlans", crewId), listPersonal(crewId, "foodRatings", { sinceDays: 30 }), listPersonal(crewId, "activityLogs", { sinceDays: 8 })]);
+  const food = analyseFood(foodRatings, MENU.map((m) => m.name), new Date());
   const [vitals, sleep, checkIns, moodsAll, symptoms, meds, notes, wearables, alerts, plans] = await Promise.all([
     listPersonal(crewId, "vitals", { sinceDays: 30 }),
     listPersonal(crewId, "sleepLogs", { sinceDays: 30 }),
@@ -146,6 +153,17 @@ export default async function CrewDetail({ params, searchParams }: PageProps<"/a
               {moods.length === 0 ? <p className="text-muted">No shared entries.</p> : null}
             </CardBody>
           </Card>
+          <Card>
+            <CardHeader title="Appetite & menu fatigue" description="From the crew member's meal ratings (Menu Fatigue Radar)" />
+            <CardBody className="space-y-2 text-sm">
+              <p>
+                Meals finished: <strong>{food.finishedRecent === null ? "—" : `${Math.round(food.finishedRecent * 100)}%`}</strong> this week vs{" "}
+                {food.finishedBefore === null ? "—" : `${Math.round(food.finishedBefore * 100)}%`} last week {food.appetiteDropping ? <Badge tone="warn">Dipping</Badge> : null}
+              </p>
+              {food.rest.length ? <p className="text-muted">Tiring of: {food.rest.map((r) => r.item).join(", ")}</p> : <p className="text-muted">No menu fatigue detected.</p>}
+            </CardBody>
+          </Card>
+          <ExerciseBalance balance={exPlan ? weeklyBalance(acts8, exPlan, new Date()) : null} slots={[]} setBy={exPlan?.setByName ?? null} tz={tz} />
           <Card className="lg:col-span-2">
             <CardHeader title="Latest vitals" />
             <CardBody>
@@ -230,6 +248,24 @@ export default async function CrewDetail({ params, searchParams }: PageProps<"/a
                 <Field label="Instructions" optional htmlFor="md-ins">
                   <Input id="md-ins" name="instructions" />
                 </Field>
+              </ActionForm>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardHeader title="Weekly exercise targets" description="Drives the crew member's Exercise balance rings." />
+            <CardBody>
+              <ActionForm action={exercisePlanForm.bind(null, crewId)} resetOnSuccess={false} submitLabel="Save targets" className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="Strength (min/week)" htmlFor="ex-r">
+                    <Input id="ex-r" name="resistance" type="number" min={0} max={1500} defaultValue={exPlan?.resistanceMinPerWeek ?? 300} />
+                  </Field>
+                  <Field label="Cardio (min/week)" htmlFor="ex-a">
+                    <Input id="ex-a" name="aerobic" type="number" min={0} max={1500} defaultValue={exPlan?.aerobicMinPerWeek ?? 180} />
+                  </Field>
+                  <Field label="Stretch (min/week)" htmlFor="ex-m">
+                    <Input id="ex-m" name="mobility" type="number" min={0} max={1500} defaultValue={exPlan?.mobilityMinPerWeek ?? 60} />
+                  </Field>
+                </div>
               </ActionForm>
             </CardBody>
           </Card>

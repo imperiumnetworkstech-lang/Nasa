@@ -51,6 +51,11 @@ export default async function AdminSettings() {
             <Field label="Delay each way (minutes)" htmlFor="cd" help="0 means no delay. Up to 45 minutes.">
               <Input id="cd" name="commDelayMin" type="number" step="0.5" min={0} max={45} defaultValue={s.commDelaySeconds / 60} className="max-w-40" />
             </Field>
+            <div className="mt-4">
+              <Field label="Link available every (hours)" htmlFor="cw" help="0 means the link is always up. Otherwise questions wait for the next window, starting at midnight UTC.">
+                <Input id="cw" name="commWindowEveryHours" type="number" min={0} max={24} defaultValue={s.commWindowEveryHours} className="max-w-40" />
+              </Field>
+            </div>
           </CardBody>
         </Card>
 

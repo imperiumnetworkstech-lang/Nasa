@@ -24,12 +24,14 @@ const crew: NavGroup[] = [
       { href: "/app/crew/activity", label: "Exercise", icon: "Dumbbell" },
       { href: "/app/crew/mood", label: "Mood", icon: "Smile" },
       { href: "/app/crew/cognitive-readiness", label: "Focus check", icon: "Brain" },
+      { href: "/app/crew/skills", label: "Skill practice", icon: "GraduationCap", description: "Keep emergency skills fresh" },
     ],
   },
   {
     label: "Care",
     items: [
       { href: "/app/crew/symptoms", label: "Get help", icon: "Stethoscope", description: "Tell the doctor how you feel" },
+      { href: "/app/crew/ask", label: "Ask the doctor", icon: "MessageCircleQuestion", description: "Send a question, see where it is" },
       { href: "/app/crew/medications", label: "Medicines", icon: "Pill" },
       { href: "/app/crew/my-plan", label: "Plan & messages", icon: "ListChecks" },
     ],
@@ -43,6 +45,8 @@ const medical: NavGroup[] = [
       { href: "/app/medical/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
       { href: "/app/medical/crew", label: "Assigned crew", icon: "Users" },
       { href: "/app/medical/alerts", label: "Alert centre", icon: "BellRing" },
+      { href: "/app/medical/questions", label: "Crew questions", icon: "MessageCircleQuestion" },
+      { href: "/app/medical/skills", label: "Skill Keeper", icon: "GraduationCap" },
       { href: "/app/medical/care-plans", label: "Care plans", icon: "ListChecks" },
       { href: "/app/medical/consultations", label: "Consultations", icon: "MessagesSquare" },
       { href: "/app/medical/mission-timeline", label: "Mission context", icon: "CalendarRange" },

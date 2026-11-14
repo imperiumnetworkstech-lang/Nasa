@@ -164,7 +164,8 @@ export async function seedDemoData(store: DocStore, now: Date): Promise<void> {
     if (p.role !== "admin") put(`missions/${p.missionId}/crew/${p.uid}`, member);
   }
 
-  put("config/platform", { ...DEFAULT_SETTINGS, updatedAt: iso(now), updatedBy: "seed" });
+  // Demo shows communication-delay mode: 8 minutes one-way, continuous link.
+  put("config/platform", { ...DEFAULT_SETTINGS, commDelaySeconds: 480, updatedAt: iso(now), updatedBy: "seed" });
   const invites: Invite[] = [
     { code: "DEMO-CREW", role: "astronaut", missionId: DEMO_MISSION_ID, usesLeft: 50, createdBy: "demo-admin", createdAt: iso(now) },
   ];
@@ -755,6 +756,115 @@ export async function seedDemoData(store: DocStore, now: Date): Promise<void> {
     { id: id("nt"), uid: "demo-commander", kind: "schedule", title: "Planner conflict", body: "Overnight systems check overlaps a sleep window.", href: "/app/mission/operations", createdAt: iso(now), readAt: null },
   ];
   for (const x of nts) put(`users/${x.uid}/notifications/${x.id}`, x);
+
+  // ---------- Menu Fatigue Radar ----------
+  const pantry = ["Beef stew", "Chicken curry", "Vegetable lasagna", "Teriyaki salmon", "Black bean chili", "Lemon pepper tuna", "Lentil dal", "Macaroni and cheese", "Scrambled eggs", "Oatmeal with raisins", "Chocolate pudding"];
+  for (const p of crew.filter((c) => c.missionId === DEMO_MISSION_ID)) {
+    for (let d = 20; d >= 0; d--) {
+      for (const slot of [12, 18]) {
+        let item = pantry[Math.floor(r() * pantry.length)];
+        // Vega gets Beef stew often and slowly tires of it (menu fatigue demo).
+        if (p.uid === "demo-crew-1" && d % 3 === 0 && slot === 18) item = "Beef stew";
+        let rating = Math.min(5, Math.max(1, Math.round(n(3.9, 0.7)))) as 1 | 2 | 3 | 4 | 5;
+        let ate: "all" | "some" | "none" = r() < 0.85 ? "all" : "some";
+        if (item === "Beef stew" && p.uid === "demo-crew-1") {
+          rating = (d > 12 ? 5 : d > 6 ? 3 : 2) as 1 | 2 | 3 | 4 | 5;
+          ate = d > 6 ? "all" : d > 3 ? "some" : "none";
+        }
+        // Rigel's appetite drops this week (shows the appetite trend for medical).
+        if (p.uid === "demo-crew-5" && d < 6) ate = r() < 0.6 ? "some" : "none";
+        const fr = { id: id("fr"), uid: p.uid, missionId: p.missionId, enteredBy: p.uid, origin: "simulated" as const, createdAt: iso(atDay(d, slot)), at: iso(atDay(d, slot, 30)), item, rating, ate };
+        put(`users/${p.uid}/foodRatings/${fr.id}`, fr);
+      }
+    }
+  }
+
+  // ---------- Exercise Balance: weekly targets set by the medical officer ----------
+  for (const p of crew.filter((c) => c.missionId === DEMO_MISSION_ID)) {
+    put(`missions/${DEMO_MISSION_ID}/exercisePlans/${p.uid}`, {
+      id: p.uid,
+      missionId: DEMO_MISSION_ID,
+      crewUid: p.uid,
+      resistanceMinPerWeek: 360,
+      aerobicMinPerWeek: 210,
+      mobilityMinPerWeek: 90,
+      setBy: "demo-medical",
+      setByName: "Dr. Priya Natarajan",
+      updatedAt: iso(atDay(30, 9)),
+      origin: "simulated",
+    });
+  }
+
+  // ---------- Skill Keeper: practice cards (demo placeholders, not real procedures) ----------
+  const cards = [
+    { title: "Medical kit location", prompt: "Where is the main medical kit stowed?", answer: "Demo: Node 1, rack 2, upper locker (blue label).", category: "kit", halfLifeDays: 21 },
+    { title: "Oxygen mask", prompt: "Where are the emergency oxygen masks, and how many are there?", answer: "Demo: next to each sleep station hatch — one per crew member plus two spares.", category: "equipment", halfLifeDays: 14 },
+    { title: "Who to alert first", prompt: "In a medical event, who do you alert first?", answer: "Follow the mission emergency procedure: alert the commander and crew medical officer at the same time, then the ground.", category: "communication", halfLifeDays: 30 },
+    { title: "Handheld vitals monitor", prompt: "How do you take and save a reading with the handheld vitals monitor?", answer: "Demo placeholder — the mission medical team supplies the approved steps.", category: "procedure", halfLifeDays: 14 },
+    { title: "Defibrillator location", prompt: "Where is the defibrillator?", answer: "Demo: galley wall, behind the yellow panel.", category: "equipment", halfLifeDays: 21 },
+    { title: "Eye-wash station", prompt: "Where is the eye-wash kit and how long should you rinse?", answer: "Demo placeholder — location and steps come from the approved procedure.", category: "kit", halfLifeDays: 21 },
+  ] as const;
+  const cardIds: string[] = [];
+  for (const c of cards) {
+    const cid = id("sk");
+    cardIds.push(cid);
+    put(`missions/${DEMO_MISSION_ID}/skillCards/${cid}`, { id: cid, missionId: DEMO_MISSION_ID, ...c, authoredBy: "Dr. Priya Natarajan", createdAt: iso(atDay(35, 9)), origin: "simulated" });
+  }
+  for (const p of crew.filter((c) => c.missionId === DEMO_MISSION_ID)) {
+    for (const cid of cardIds) {
+      // Lyra has not practised recently (stale skills); others vary.
+      const recentGap = p.uid === "demo-crew-3" ? 26 : Math.floor(r() * 20);
+      for (const d of [recentGap + 14, recentGap]) {
+        if (r() < 0.15) continue;
+        const res = (["hard", "ok", "ok", "easy"] as const)[Math.floor(r() * 4)];
+        const sr = { id: id("sr"), uid: p.uid, missionId: p.missionId, enteredBy: p.uid, origin: "simulated" as const, createdAt: iso(atDay(d, 19)), at: iso(atDay(d, 19)), cardId: cid, result: res };
+        put(`users/${p.uid}/skillReviews/${sr.id}`, sr);
+      }
+    }
+  }
+
+  // ---------- Ask the Doctor: store-and-forward questions ----------
+  const delay = 8 * 60_000;
+  const q1At = atDay(1, 9);
+  put(`missions/${DEMO_MISSION_ID}/questions/q-orion-1`, {
+    id: "q-orion-1",
+    missionId: DEMO_MISSION_ID,
+    crewUid: "demo-crew-2",
+    crewLabel: "Orion",
+    text: "My headache gets worse in the afternoon. Should I change when I drink water? (demo)",
+    topic: "symptom",
+    priority: "soon",
+    attachments: [{ label: "Water (last 3 days)", summary: "Average 1.6 L/day" }],
+    createdAt: iso(q1At),
+    sendAt: iso(q1At),
+    arriveAt: iso(new Date(q1At.getTime() + delay)),
+    answer: {
+      text: "Thanks Orion. Try spreading water evenly through the morning and log it — we'll review with your vitals tomorrow. (demo)",
+      byUid: "demo-medical",
+      byName: "Dr. Priya Natarajan",
+      at: iso(atDay(1, 11)),
+      arriveAt: iso(new Date(atDay(1, 11).getTime() + delay)),
+    },
+    readAt: null,
+    origin: "simulated",
+  });
+  const q2At = new Date(now.getTime() - 3 * 60_000);
+  put(`missions/${DEMO_MISSION_ID}/questions/q-vega-1`, {
+    id: "q-vega-1",
+    missionId: DEMO_MISSION_ID,
+    crewUid: "demo-crew-1",
+    crewLabel: "Vega",
+    text: "Is it OK to move my resistance session to the evening this week? (demo)",
+    topic: "exercise",
+    priority: "routine",
+    attachments: [],
+    createdAt: iso(q2At),
+    sendAt: iso(q2At),
+    arriveAt: iso(new Date(q2At.getTime() + delay)),
+    answer: null,
+    readAt: null,
+    origin: "simulated",
+  });
 
   await store.setMany(entries);
 }

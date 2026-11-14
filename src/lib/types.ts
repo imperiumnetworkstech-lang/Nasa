@@ -246,7 +246,25 @@ export interface WearableSession extends BaseRecord {
   context?: string;
 }
 
+/** One rating of one menu item (Menu Fatigue Radar). */
+export interface FoodRating extends BaseRecord {
+  at: ISODate;
+  item: string;
+  /** 1 = really didn't enjoy … 5 = loved it */
+  rating: 1 | 2 | 3 | 4 | 5;
+  ate: "all" | "some" | "none";
+}
+
+/** A practice review of one Skill Keeper card. */
+export interface SkillReview extends BaseRecord {
+  at: ISODate;
+  cardId: string;
+  result: "forgot" | "hard" | "ok" | "easy";
+}
+
 export type PersonalKind =
+  | "foodRatings"
+  | "skillReviews"
   | "wearableSessions"
   | "checkIns"
   | "vitals"
@@ -263,6 +281,8 @@ export type PersonalKind =
   | "clinicalNotes";
 
 export interface PersonalRecordMap {
+  foodRatings: FoodRating;
+  skillReviews: SkillReview;
   wearableSessions: WearableSession;
   checkIns: CheckIn;
   vitals: Vital;
@@ -446,6 +466,8 @@ export interface Thresholds {
 
 export interface PlatformSettings {
   commDelaySeconds: number;
+  /** Hours between communication windows (0 = continuous link). */
+  commWindowEveryHours: number;
   thresholds: Thresholds;
   rulesVersion: string;
   privacyMinGroupSize: number;
@@ -463,7 +485,60 @@ export interface Invite {
   createdAt: ISODate;
 }
 
+/** Ask the Doctor: a delay-aware, store-and-forward question from a crew member. */
+export interface CrewQuestion {
+  id: string;
+  missionId: string;
+  crewUid: string;
+  crewLabel: string;
+  text: string;
+  topic: "symptom" | "medication" | "sleep" | "exercise" | "food" | "mood" | "other";
+  priority: "routine" | "soon";
+  /** Snapshot of the crew member's own data they chose to attach (plain text, no raw records). */
+  attachments: { label: string; summary: string }[];
+  createdAt: ISODate;
+  /** When it leaves the habitat (next communication window). */
+  sendAt: ISODate;
+  /** Earliest moment the ground can read it (sendAt + one-way delay). */
+  arriveAt: ISODate;
+  answer: { text: string; byUid: string; byName: string; at: ISODate; arriveAt: ISODate } | null;
+  readAt: ISODate | null;
+  origin: Origin;
+}
+
+/** Weekly exercise targets set by the medical team for one crew member (Exercise Balance). */
+export interface ExercisePlan {
+  id: string; // = crewUid
+  missionId: string;
+  crewUid: string;
+  resistanceMinPerWeek: number;
+  aerobicMinPerWeek: number;
+  mobilityMinPerWeek: number;
+  setBy: string;
+  setByName: string;
+  updatedAt: ISODate;
+  origin: Origin;
+}
+
+/** Skill Keeper practice card authored by the medical team. */
+export interface SkillCard {
+  id: string;
+  missionId: string;
+  title: string;
+  prompt: string;
+  answer: string;
+  category: "kit" | "procedure" | "equipment" | "communication";
+  /** How fast the skill is assumed to fade without practice (configurable). */
+  halfLifeDays: number;
+  authoredBy: string;
+  createdAt: ISODate;
+  origin: Origin;
+}
+
 export interface MissionRecordMap {
+  questions: CrewQuestion;
+  exercisePlans: ExercisePlan;
+  skillCards: SkillCard;
   alerts: Alert;
   carePlans: CarePlan;
   missionEvents: MissionEvent;

@@ -9,12 +9,17 @@ import { Card, CardBody, CardHeader, Progress, ViewAll } from "@/components/ui/c
 import { DemoBadge } from "@/components/ui/badge";
 import { TrendChart, CHART_COLORS } from "@/components/charts/trend-chart";
 import { HydrationQuickAdd, MealForm } from "@/components/crew/forms";
+import { FoodRater } from "@/components/crew/food-rater";
+import { FoodRadar } from "@/components/crew/food-radar";
+import { analyseFood } from "@/lib/food/fatigue";
+import { MENU } from "@/lib/content/menu";
 
-export const metadata: Metadata = { title: "Hydration & meals" };
+export const metadata: Metadata = { title: "Water & food" };
 
 export default async function HydrationPage() {
   const { user, tz } = await crewContext();
-  const [hyd, meals] = await Promise.all([listPersonal(user.uid, "hydrationLogs", { sinceDays: 14 }), listPersonal(user.uid, "mealLogs", { sinceDays: 3 })]);
+  const [hyd, meals, ratings] = await Promise.all([listPersonal(user.uid, "hydrationLogs", { sinceDays: 14 }), listPersonal(user.uid, "mealLogs", { sinceDays: 3 }), listPersonal(user.uid, "foodRatings", { sinceDays: 45 })]);
+  const report = analyseFood(ratings, MENU.map((m) => m.name), new Date());
   const target = user.preferences.hydrationTargetMl;
   const unit = user.preferences.volumeUnit;
   const today = dayKey(new Date().toISOString(), tz);
@@ -22,7 +27,7 @@ export default async function HydrationPage() {
   const demo = hyd.some((h) => h.origin === "simulated");
   return (
     <div className="space-y-6">
-      <PageHeader title="Hydration & meals" description="Targets are set by you or your medical team — Antariksha never prescribes fluid or nutrition targets." crumbs={[{ label: "Home", href: "/app/crew/dashboard" }, { label: "Hydration" }]} badges={demo ? <DemoBadge /> : undefined} />
+      <PageHeader title="Water & food" description="Log water, rate your meals and let the taste radar help you avoid getting tired of the menu." crumbs={[{ label: "Home", href: "/app/crew/dashboard" }, { label: "Water & food" }]} badges={demo ? <DemoBadge /> : undefined} />
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         <Card>
           <CardHeader title="Today" action={<ViewAll href="/app/profile">Edit target</ViewAll>} />
@@ -44,6 +49,15 @@ export default async function HydrationPage() {
             <TrendChart title="Water intake" unit="ml" data={dailySeries(hyd, (h) => h.at, 14, { ml: sumOf((h) => h.amountMl) }, tz)} series={[{ key: "ml", label: "Water", color: CHART_COLORS.teal, type: "bar", unit: "ml" }]} demo={demo} height={250} />
           </CardBody>
         </Card>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+        <Card>
+          <CardHeader title="Rate your meal" description="Three taps. Spot menu fatigue before it spoils your appetite." />
+          <CardBody>
+            <FoodRater items={MENU.map((m) => ({ name: m.name, emoji: m.emoji }))} suggested={report.suggestions.map((x) => x.item)} />
+          </CardBody>
+        </Card>
+        <FoodRadar report={report} demo={ratings.some((r) => r.origin === "simulated")} />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

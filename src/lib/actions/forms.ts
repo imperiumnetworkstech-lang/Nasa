@@ -113,8 +113,30 @@ const THRESHOLD_KEYS = ["hrDriftZ", "baselineWindowDays", "baselineMinObservatio
 export async function settingsForm(r: Raw) {
   return updateSettings({
     commDelaySeconds: Math.round(Number(s(r, "commDelayMin")) * 60),
+    commWindowEveryHours: Number(s(r, "commWindowEveryHours")) || 0,
     privacyMinGroupSize: Number(s(r, "privacyMinGroupSize")),
     thresholds: Object.fromEntries(THRESHOLD_KEYS.map((k) => [k, Number(s(r, k))])),
     features: { readinessSummary: s(r, "readinessSummary") === "on", guideAI: s(r, "guideAI") === "on", environmentOverlay: s(r, "environmentOverlay") === "on" },
   });
+}
+
+// ---- new features ----
+import { addSkillCard, answerQuestion, askDoctor, setExercisePlan } from "./features";
+
+export async function askDoctorForm(r: Raw) {
+  return askDoctor({ text: s(r, "text"), topic: s(r, "topic") || "other", priority: s(r, "priority") || "routine", attach: arr(r, "attach") });
+}
+export async function answerForm(questionId: string, r: Raw) {
+  return answerQuestion({ questionId, text: s(r, "text") });
+}
+export async function exercisePlanForm(crewUid: string, r: Raw) {
+  return setExercisePlan({
+    crewUid,
+    resistanceMinPerWeek: Number(s(r, "resistance")),
+    aerobicMinPerWeek: Number(s(r, "aerobic")),
+    mobilityMinPerWeek: Number(s(r, "mobility")),
+  });
+}
+export async function skillCardForm(r: Raw) {
+  return addSkillCard({ title: s(r, "title"), prompt: s(r, "prompt"), answer: s(r, "answer"), category: s(r, "category"), halfLifeDays: Number(s(r, "halfLife")) });
 }

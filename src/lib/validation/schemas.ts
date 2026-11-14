@@ -221,6 +221,7 @@ export const missionSchema = z.object({
 });
 export const settingsSchema = z.object({
   commDelaySeconds: z.number().int().min(0).max(2700),
+  commWindowEveryHours: z.number().int().min(0).max(24),
   privacyMinGroupSize: z.number().int().min(2).max(20),
   thresholds: z.object({
     hrDriftZ: z.number().min(1).max(6),
@@ -236,3 +237,41 @@ export const settingsSchema = z.object({
   features: z.object({ readinessSummary: z.boolean(), guideAI: z.boolean(), environmentOverlay: z.boolean() }),
 });
 export const inviteSchema = z.object({ role: z.enum(ROLES), missionId: z.string().nullable(), usesLeft: z.number().int().min(1).max(500) });
+
+// ---- New features ----
+export const foodRatingSchema = z.object({
+  item: shortText(80).min(1, "Pick what you ate"),
+  rating: z.number().int().min(1).max(5),
+  ate: z.enum(["all", "some", "none"]),
+  clientId,
+});
+
+export const skillReviewSchema = z.object({
+  cardId: z.string().min(1).max(64),
+  result: z.enum(["forgot", "hard", "ok", "easy"]),
+});
+
+export const ATTACHABLE = ["water", "sleep", "heart", "checkin", "exercise", "food"] as const;
+export const questionSchema = z.object({
+  text: shortText(1500).min(5, "Write your question (at least a few words)"),
+  topic: z.enum(["symptom", "medication", "sleep", "exercise", "food", "mood", "other"]),
+  priority: z.enum(["routine", "soon"]),
+  attach: z.array(z.enum(ATTACHABLE)).max(ATTACHABLE.length),
+});
+
+export const answerSchema = z.object({ questionId: z.string().min(1), text: shortText(2000).min(2, "Write an answer") });
+
+export const exercisePlanSchema = z.object({
+  crewUid: z.string().min(1),
+  resistanceMinPerWeek: z.number().int().min(0).max(1500),
+  aerobicMinPerWeek: z.number().int().min(0).max(1500),
+  mobilityMinPerWeek: z.number().int().min(0).max(1500),
+});
+
+export const skillCardSchema = z.object({
+  title: shortText(80).min(2),
+  prompt: shortText(400).min(5),
+  answer: shortText(800).min(2),
+  category: z.enum(["kit", "procedure", "equipment", "communication"]),
+  halfLifeDays: z.number().int().min(3).max(120),
+});

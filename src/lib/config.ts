@@ -28,6 +28,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
 /** ILLUSTRATIVE thresholds for demonstration only — not clinical or mission standards. */
 export const DEFAULT_SETTINGS: PlatformSettings = {
   commDelaySeconds: 0,
+  commWindowEveryHours: 0,
   thresholds: {
     hrDriftZ: 2.5,
     baselineWindowDays: 21,

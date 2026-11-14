@@ -46,6 +46,21 @@ To regenerate demo data with today's dates: **Admin → Settings → Regenerate 
 
 **Shared** — notifications, profile & preferences (units, timezone, theme, hydration target, reminders), help & safety, crew knowledge capture (medical approves before publishing), global search (Ctrl+K), Antariksha Guide assistant (local and deterministic by default), offline queue with visible "Queued — not sent" state, PWA shell.
 
+## Research-backed features (gaps with no existing crew tool found)
+
+Each feature targets a documented long-duration-mission problem. Before building, we searched for existing tools; where something similar already existed (circadian lighting apps, the TEAMSTaR team-dynamics dashboard, a vendor's ISS medicine-expiry forecaster) we did **not** build it.
+
+| Feature | Problem it addresses | Where |
+|---|---|---|
+| **Ask the Doctor** — delay-aware question queue | Mars one-way delays of ~3–24 min make live calls impossible; NASA calls store-and-forward "underutilized" and no crew-facing question-queue app was found. Crew attach only the data summaries they choose; a live tracker shows *waiting for link → travelling → with your doctor → reply on its way → answered*, with honest countdowns. Doctors can't read a question before it physically arrives. | Crew: Ask the doctor · Medical: Crew questions · Admin: link window setting |
+| **Menu Fatigue Radar** | Food is a NASA "red risk"; menu fatigue onset varies widely between people, and crews stop eating disliked items. No detection/rotation tool found. Three-tap meal ratings; detects items the person is tiring of (vs their *own* earlier ratings), appetite dips week-over-week, and suggests favourites not eaten lately or untried pantry items. | Crew: Water & food · Medical: crew detail |
+| **Exercise Balance** | Bone and muscle loss continue despite ~10 h/week of exercise. No crew-side "countermeasure debt" tracker found. Rings show the last 7 days vs weekly targets set by the medical team, and free schedule slots (from the mission timeline) to catch up. | Crew: Exercise & home · Medical: crew detail (targets) |
+| **Skill Keeper** | Non-physician crew medical officers' skills decay; NASA recommends refreshers but no spaced-repetition tool for them was found. Medical team writes short practice cards; crew get a 2-minute flashcard session; freshness decays with a configurable half-life and lengthens with spaced practice. | Crew: Skill practice · Medical: Skill Keeper grid · Commander: skill readiness |
+
+The crew home shows a short **"Today for you"** list (new answers, skills to refresh, exercise to catch up, meal to rate). Decay rates, targets and thresholds are configurable placeholders, not validated clinical values.
+
+Sources: NASA HRP gap & risk material; npj Microgravity 2024 (ISS formulary expiration); NASA store-and-forward telemedicine notes; NASA/Frontiers 2025 ISS food-acceptability work; npj Microgravity & BJSM work on bone loss with ARED; NASA skill-retention literature reviews.
+
 ## Sensors & the trained model
 
 Monitored signals: heart rate, oxygen (SpO₂), sweat level (electrodermal activity), core and skin temperature, breathing rate, blood pressure and heart-rate variability. Each reading stores value, unit, time, source (manual / device / imported / simulated), device and quality.
@@ -164,8 +179,8 @@ Built-in protections: default-deny rules; server-side role checks on every page,
 ## Tests (last run)
 
 - `npm run typecheck` — clean. `npm run lint` — clean. `npm run build` — passes.
-- `npm test` — **55 tests** (permissions incl. negative cases, alert rules, validation, baseline, model, planner, comm-delay states, offline queue, NASA failure/fallback, repository integration incl. offline-replay idempotency and cross-mission isolation).
-- `npm run test:e2e` — **14 tests** (auth redirect, register → logout → login, role routing & blocking, check-in, crew can't see research, offline queue, alert acknowledgement + audit, OSDR search, every page for every role, cross-mission 404).
+- `npm test` — **68 tests** (permissions incl. negative cases, alert rules, validation, baseline, model, planner, comm-delay states, offline queue, NASA failure/fallback, repository integration incl. offline-replay idempotency and cross-mission isolation).
+- `npm run test:e2e` — **25 tests** (auth redirect, register → logout → login, role routing & blocking, check-in, crew can't see research, offline queue, alert acknowledgement + audit, OSDR search, every page for every role, cross-mission 404).
 - `npm run test:rules` — written (cross-user, cross-role, journal, self-role, append-only); requires Java 11+ for the emulator.
 
 ## Troubleshooting

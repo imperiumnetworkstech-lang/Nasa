@@ -20,10 +20,12 @@ import {
   symptomSchema,
   vitalSchema,
   wearableWindowSchema,
+  foodRatingSchema,
+  skillReviewSchema,
 } from "@/lib/validation/schemas";
 
 /** Kinds that may be queued offline. Symptom reports are deliberately excluded. */
-export const OFFLINE_ALLOWED: PersonalKind[] = ["checkIns", "hydrationLogs", "sleepLogs", "moodLogs", "activityLogs", "mealLogs"];
+export const OFFLINE_ALLOWED: PersonalKind[] = ["checkIns", "hydrationLogs", "sleepLogs", "moodLogs", "activityLogs", "mealLogs", "foodRatings", "skillReviews"];
 
 export const SELF_RECORD_SCHEMAS = {
   checkIns: checkInSchema,
@@ -38,6 +40,8 @@ export const SELF_RECORD_SCHEMAS = {
   symptomReports: symptomSchema,
   medicationLogs: medicationLogSchema,
   wearableSessions: wearableWindowSchema,
+  foodRatings: foodRatingSchema,
+  skillReviews: skillReviewSchema,
 } as const;
 export type SelfKind = keyof typeof SELF_RECORD_SCHEMAS;
 export const SELF_KINDS = Object.keys(SELF_RECORD_SCHEMAS) as SelfKind[];
