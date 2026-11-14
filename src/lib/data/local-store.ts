@@ -31,7 +31,7 @@ class LocalStore implements DocStore {
   constructor() {
     try {
       const file = dataFile();
-      if (fs.existsSync(file)) this.data = JSON.parse(fs.readFileSync(file, "utf8")) as Collections;
+      if (fs.existsSync(/*turbopackIgnore: true*/ file)) this.data = JSON.parse(fs.readFileSync(/*turbopackIgnore: true*/ file, "utf8")) as Collections;
     } catch {
       this.data = {};
     }
@@ -47,8 +47,8 @@ class LocalStore implements DocStore {
     if (!this.persist) return;
     try {
       const file = dataFile();
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, JSON.stringify(this.data));
+      fs.mkdirSync(/*turbopackIgnore: true*/ path.dirname(file), { recursive: true });
+      fs.writeFileSync(/*turbopackIgnore: true*/ file, JSON.stringify(this.data));
     } catch {
       this.persist = false; // read-only filesystem: keep working in memory
     }

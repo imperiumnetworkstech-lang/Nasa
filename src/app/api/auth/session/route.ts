@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   try {
-    const decoded = await adminAuth().verifyIdToken(parsed.data.idToken, true);
+    const decoded = await (await adminAuth()).verifyIdToken(parsed.data.idToken, true);
     let user = await getUser(decoded.uid);
     if (!user) {
       user = await createProfile(

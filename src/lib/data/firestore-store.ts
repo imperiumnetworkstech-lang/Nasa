@@ -6,17 +6,18 @@ import { applyQuery, type DocStore, type QueryOptions } from "./store";
 /** Firestore implementation of DocStore using the Admin SDK (server-side only). */
 export class FirestoreStore implements DocStore {
   readonly backend = "firestore" as const;
-  private get db(): Firestore {
-    return adminDb();
+  private dbp: Promise<Firestore> | null = null;
+  private db(): Promise<Firestore> {
+    return (this.dbp ??= adminDb());
   }
 
   async get<T>(path: string): Promise<T | null> {
-    const snap = await this.db.doc(path).get();
+    const snap = await (await this.db()).doc(path).get();
     return snap.exists ? (snap.data() as T) : null;
   }
 
   async list<T>(collectionPath: string, q?: QueryOptions): Promise<T[]> {
-    let ref: Query = this.db.collection(collectionPath);
+    let ref: Query = (await this.db()).collection(collectionPath);
     for (const [field, op, value] of q?.where ?? []) ref = ref.where(field, op, value);
     // Firestore needs composite indexes for where+orderBy on different fields; to keep the demo
     // index-free we only push orderBy/limit down when there are no where clauses.
@@ -29,31 +30,32 @@ export class FirestoreStore implements DocStore {
   }
 
   async set<T extends object>(path: string, data: T): Promise<void> {
-    await this.db.doc(path).set(stripUndefined(data));
+    await (await this.db()).doc(path).set(stripUndefined(data));
   }
 
   async setMany(entries: { path: string; data: object }[]): Promise<void> {
     for (let i = 0; i < entries.length; i += 450) {
-      const batch = this.db.batch();
-      for (const e of entries.slice(i, i + 450)) batch.set(this.db.doc(e.path), stripUndefined(e.data));
+      const batch = (await this.db()).batch();
+      for (const e of entries.slice(i, i + 450)) batch.set((await this.db()).doc(e.path), stripUndefined(e.data));
       await batch.commit();
     }
   }
 
   async update(path: string, patch: Record<string, unknown>): Promise<void> {
-    await this.db.doc(path).update(stripUndefined(patch));
+    await (await this.db()).doc(path).update(stripUndefined(patch));
   }
 
   async delete(path: string): Promise<void> {
-    await this.db.doc(path).delete();
+    await (await this.db()).doc(path).delete();
   }
 
   async deleteCollection(collectionPath: string): Promise<void> {
-    await this.db.recursiveDelete(this.db.collection(collectionPath));
+    const db = await this.db();
+    await db.recursiveDelete(db.collection(collectionPath));
   }
 
   async listCollectionIds(docPath: string): Promise<string[]> {
-    const cols = await this.db.doc(docPath).listCollections();
+    const cols = await (await this.db()).doc(docPath).listCollections();
     return cols.map((c) => c.id);
   }
 }
