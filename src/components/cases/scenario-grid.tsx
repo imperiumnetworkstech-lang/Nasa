@@ -6,7 +6,7 @@ import { Loader2, X } from "lucide-react";
 import { runConsoleScenario, runMyScenario } from "@/lib/actions/cases";
 import type { HealthCase } from "@/lib/types";
 import { toast } from "@/components/ui/toast";
-import { playAlarm, playChime } from "@/components/shell/notification-bell";
+import { playAlarm, playChime, stopAlarm, unlockAudio } from "@/components/shell/sound";
 import { cn } from "@/lib/utils";
 import { CaseView } from "./case-view";
 
@@ -27,6 +27,7 @@ export function ScenarioGrid({ scenarios, crewUid, mode }: { scenarios: Scenario
   const router = useRouter();
 
   async function run(id: string) {
+    void unlockAudio();
     setBusy(id);
     try {
       const r = mode === "crew" ? await runMyScenario(id) : await runConsoleScenario(crewUid ?? "", id);
@@ -42,7 +43,7 @@ export function ScenarioGrid({ scenarios, crewUid, mode }: { scenarios: Scenario
           /* ignore */
         }
       }
-      if (c.analysis.severity !== "normal") playAlarm();
+      if (c.analysis.severity !== "normal") playAlarm(6000);
       else playChime();
       toast({
         tone: c.analysis.severity === "normal" ? "success" : "error",
@@ -85,7 +86,10 @@ export function ScenarioGrid({ scenarios, crewUid, mode }: { scenarios: Scenario
           <div className="pop-in max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[var(--radius-card)] bg-surface p-5 shadow-2xl sm:rounded-[var(--radius-card)]" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">Suit reading analysed{mode === "console" ? ` · ${result.crewName}` : ""}</p>
-              <button onClick={() => setResult(null)} className="rounded-full p-2 hover:bg-surface-2" aria-label="Close">
+              <button onClick={() => {
+                  stopAlarm();
+                  setResult(null);
+                }} className="rounded-full p-2 hover:bg-surface-2" aria-label="Close">
                 <X aria-hidden className="h-5 w-5" />
               </button>
             </div>

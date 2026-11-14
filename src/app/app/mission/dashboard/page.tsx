@@ -6,7 +6,6 @@ import { fmtDateTime, missionDay, requestTime } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader, ViewAll } from "@/components/ui/card";
 import { DemoBadge } from "@/components/ui/badge";
-import { AutoRefresh } from "@/components/cases/live";
 import { CaseCard, CrewStatusBoard } from "@/components/cases/staff";
 
 export const metadata: Metadata = { title: "Home" };
@@ -23,7 +22,6 @@ export default async function MissionHome() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <AutoRefresh seconds={5} />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Hello, {user.callSign ?? user.displayName}! 👋</h1>

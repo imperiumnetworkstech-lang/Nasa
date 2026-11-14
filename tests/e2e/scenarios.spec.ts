@@ -37,8 +37,11 @@ test("scenario flows to crew, doctor and commander, then back to normal", async 
   await expect(crew.getByRole("alertdialog").getByText("Do this now")).toBeVisible();
   await crew.getByRole("button", { name: "I understand" }).click();
 
-  // 3. Doctor sees the active case with the model's medicine already recommended, and adds one more.
-  await doc.reload();
+  // 3. Doctor portal raises the emergency pop-up on its own (live sync), then sees the case.
+  const docAlert = doc.getByRole("alertdialog");
+  await expect(docAlert).toBeVisible({ timeout: 15_000 });
+  await expect(docAlert.getByText(/Anaya Rao/).first()).toBeVisible();
+  await docAlert.getByRole("button", { name: /Acknowledge/ }).click();
   const card = doc.locator("article").filter({ hasText: "Anaya Rao" }).filter({ hasText: "Low heart rate" }).first();
   await expect(card).toBeVisible();
   await expect(card.getByText(/Atropine sulfate injection/)).toBeVisible();
@@ -48,7 +51,10 @@ test("scenario flows to crew, doctor and commander, then back to normal", async 
   await card.getByRole("button", { name: "Add & send to crew" }).click();
   await expect(doc.getByRole("status").filter({ hasText: "crew and commander notified" }).first()).toBeVisible();
 
-  // 4. Commander sees the case, including what the doctor added.
+  // 4. Commander portal also raised the emergency pop-up; it sees the case and the doctor's addition.
+  const cmdAlert = cmd.getByRole("alertdialog");
+  await expect(cmdAlert).toBeVisible({ timeout: 15_000 });
+  await cmdAlert.getByRole("button", { name: /Acknowledge/ }).click();
   await cmd.reload();
   const cmdCard = cmd.locator("article").filter({ hasText: "Anaya Rao" }).first();
   await expect(cmdCard.getByText("Low heart rate", { exact: true }).first()).toBeVisible();

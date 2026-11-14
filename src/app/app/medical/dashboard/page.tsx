@@ -8,7 +8,6 @@ import { questionStage } from "@/lib/questions/eta";
 import { missionDay, requestTime } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/misc";
 import { DemoBadge } from "@/components/ui/badge";
-import { AutoRefresh } from "@/components/cases/live";
 import { CaseCard, CrewStatusBoard } from "@/components/cases/staff";
 
 export const metadata: Metadata = { title: "Home" };
@@ -30,7 +29,6 @@ export default async function MedicalHome() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <AutoRefresh seconds={5} />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Hello, {name}! 👋</h1>

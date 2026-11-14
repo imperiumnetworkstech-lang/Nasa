@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Pill } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { playAlarm } from "@/components/shell/notification-bell";
+import { installAudioUnlock, playAlarm, stopAlarm } from "@/components/shell/sound";
 
 /** Refreshes server data every few seconds so dashboards stay in sync across tabs. */
 export function AutoRefresh({ seconds = 5 }: { seconds?: number }) {
@@ -62,8 +62,9 @@ export function CrewCaseWatcher() {
         /* offline */
       }
     };
+    installAudioUnlock();
     void check();
-    const t = setInterval(check, 5000);
+    const t = setInterval(check, 2000);
     return () => {
       stop = true;
       clearInterval(t);
@@ -72,6 +73,7 @@ export function CrewCaseWatcher() {
 
   if (!c) return null;
   const close = () => {
+    stopAlarm();
     try {
       localStorage.setItem(SEEN, c.id);
     } catch {
