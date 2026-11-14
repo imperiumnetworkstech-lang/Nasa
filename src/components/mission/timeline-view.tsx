@@ -84,7 +84,7 @@ export function TimelineView({
                     <div className="rounded-2xl bg-surface-2 p-3 text-sm">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <strong>{e.title}</strong>
-                        <span className="flex gap-1.5">
+                        <span className="flex flex-wrap gap-1.5">
                           {future ? <Badge tone="info">Planned</Badge> : null}
                           {e.workload ? <Badge tone={e.workload === "high" ? "warn" : "neutral"}>{e.workload} workload</Badge> : null}
                           {e.origin === "simulated" ? <DemoBadge label="Simulated" /> : null}

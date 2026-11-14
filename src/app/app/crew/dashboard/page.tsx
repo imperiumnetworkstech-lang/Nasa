@@ -110,7 +110,7 @@ export default async function CrewDashboard() {
           </h1>
           <p className="mt-1 text-sm text-muted">{mission ? `Mission day ${missionDay(mission.startAt, now)} · ` : ""}How are you feeling today?</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {user.isDemo ? <DemoBadge /> : null}
           <span className="inline-flex items-center gap-1 rounded-full bg-surface px-3 py-1.5 text-sm font-semibold shadow-[var(--shadow-card)]" title="Days in a row with a check-in">
             <Flame aria-hidden className="h-4 w-4 text-amber" /> {streak}

@@ -39,7 +39,7 @@ export default async function MedicalHome() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Hello, {user.displayName.split(" ").slice(-1)[0]}! 👋</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Hello, {user.displayName.startsWith("Dr.") ? `Dr. ${user.displayName.split(" ").slice(-1)[0]}` : user.displayName.split(" ")[0]}! 👋</h1>
           <p className="mt-1 text-sm text-muted">
             {mission.missionCode} · Day {missionDay(mission.startAt)} · {crew.length} crew
           </p>
