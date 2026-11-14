@@ -9,120 +9,103 @@ export interface NavItem {
 export interface NavGroup {
   label: string;
   items: NavItem[];
+  /** Folded away under "More" so the main menu stays short. */
+  collapsed?: boolean;
 }
 
-// Astronaut menu: few items, plain words. No research, datasets or technical tools.
-const crew: NavGroup[] = [
-  {
-    label: "Me",
-    items: [
+/**
+ * Every role gets a short main menu (3–5 items) and one folded "More" section.
+ * Notifications live on the bell; profile, theme and sign-out live in the avatar menu.
+ */
+const MENUS: Record<Role, { main: NavItem[]; more: NavItem[] }> = {
+  // Crew never see research or data tooling.
+  astronaut: {
+    main: [
       { href: "/app/crew/dashboard", label: "Home", icon: "LayoutDashboard", description: "How am I doing today?" },
       { href: "/app/crew/check-in", label: "Check-in", icon: "ClipboardCheck", description: "Daily one-minute check-in" },
       { href: "/app/crew/health", label: "My body", icon: "HeartPulse", description: "Heart, oxygen, sweat, temperature" },
+      { href: "/app/crew/symptoms", label: "Get help", icon: "Stethoscope", description: "Tell the doctor how you feel" },
+      { href: "/app/crew/ask", label: "Ask the doctor", icon: "MessageCircleQuestion", description: "Send a question, see where it is" },
+    ],
+    more: [
       { href: "/app/crew/sleep", label: "Sleep", icon: "Moon" },
       { href: "/app/crew/hydration", label: "Water & food", icon: "GlassWater" },
       { href: "/app/crew/activity", label: "Exercise", icon: "Dumbbell" },
       { href: "/app/crew/mood", label: "Mood", icon: "Smile" },
+      { href: "/app/crew/skills", label: "Skill practice", icon: "GraduationCap" },
       { href: "/app/crew/cognitive-readiness", label: "Focus check", icon: "Brain" },
-      { href: "/app/crew/skills", label: "Skill practice", icon: "GraduationCap", description: "Keep emergency skills fresh" },
-    ],
-  },
-  {
-    label: "Care",
-    items: [
-      { href: "/app/crew/symptoms", label: "Get help", icon: "Stethoscope", description: "Tell the doctor how you feel" },
-      { href: "/app/crew/ask", label: "Ask the doctor", icon: "MessageCircleQuestion", description: "Send a question, see where it is" },
       { href: "/app/crew/medications", label: "Medicines", icon: "Pill" },
       { href: "/app/crew/my-plan", label: "Plan & messages", icon: "ListChecks" },
+      { href: "/app/crew/history", label: "History", icon: "History" },
+      { href: "/app/library", label: "Self-care tips", icon: "Library" },
+      { href: "/app/help", label: "Help", icon: "LifeBuoy" },
     ],
   },
-];
-
-const medical: NavGroup[] = [
-  {
-    label: "Medical operations",
-    items: [
-      { href: "/app/medical/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-      { href: "/app/medical/crew", label: "Assigned crew", icon: "Users" },
-      { href: "/app/medical/alerts", label: "Alert centre", icon: "BellRing" },
-      { href: "/app/medical/questions", label: "Crew questions", icon: "MessageCircleQuestion" },
-      { href: "/app/medical/skills", label: "Skill Keeper", icon: "GraduationCap" },
+  medical: {
+    main: [
+      { href: "/app/medical/dashboard", label: "Home", icon: "LayoutDashboard" },
+      { href: "/app/medical/alerts", label: "Alerts", icon: "BellRing" },
+      { href: "/app/medical/questions", label: "Questions", icon: "MessageCircleQuestion" },
+      { href: "/app/medical/crew", label: "Crew", icon: "Users" },
+    ],
+    more: [
       { href: "/app/medical/care-plans", label: "Care plans", icon: "ListChecks" },
-      { href: "/app/medical/consultations", label: "Consultations", icon: "MessagesSquare" },
-      { href: "/app/medical/mission-timeline", label: "Mission context", icon: "CalendarRange" },
+      { href: "/app/medical/consultations", label: "Calls & messages", icon: "MessagesSquare" },
+      { href: "/app/medical/skills", label: "Skill Keeper", icon: "GraduationCap" },
+      { href: "/app/medical/mission-timeline", label: "Mission timeline", icon: "CalendarRange" },
       { href: "/app/medical/audit-log", label: "Audit log", icon: "ScrollText" },
+      { href: "/app/knowledge", label: "Crew lessons", icon: "Lightbulb" },
+      { href: "/app/research", label: "Research", icon: "Telescope" },
+      { href: "/app/help", label: "Help", icon: "LifeBuoy" },
     ],
   },
-];
-
-const commander: NavGroup[] = [
-  {
-    label: "Mission",
-    items: [
-      { href: "/app/mission/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-      { href: "/app/mission/crew-readiness", label: "Crew readiness", icon: "ShieldCheck" },
+  commander: {
+    main: [
+      { href: "/app/mission/dashboard", label: "Home", icon: "LayoutDashboard" },
+      { href: "/app/mission/crew-readiness", label: "Crew", icon: "ShieldCheck" },
+      { href: "/app/mission/operations", label: "Schedule", icon: "GanttChart" },
       { href: "/app/mission/timeline", label: "Timeline", icon: "CalendarRange" },
-      { href: "/app/mission/operations", label: "Workload planner", icon: "GanttChart" },
+    ],
+    more: [
+      { href: "/app/knowledge", label: "Crew lessons", icon: "Lightbulb" },
+      { href: "/app/research", label: "Research", icon: "Telescope" },
+      { href: "/app/help", label: "Help", icon: "LifeBuoy" },
     ],
   },
-];
-
-const research: NavGroup = {
-  label: "Research",
-  items: [
-    { href: "/app/research", label: "Research overview", icon: "Telescope" },
-    { href: "/app/research/datasets", label: "NASA OSDR datasets", icon: "Database" },
-    { href: "/app/research/insights", label: "Insights & model", icon: "LineChart" },
-    { href: "/app/research/methodology", label: "Methodology", icon: "BookOpen" },
-  ],
-};
-
-// Admin menu: three plain items. The access-rules page is linked from People.
-const admin: NavGroup[] = [
-  {
-    label: "Admin",
-    items: [
+  researcher: {
+    main: [
+      { href: "/app/research", label: "Home", icon: "LayoutDashboard" },
+      { href: "/app/research/datasets", label: "Datasets", icon: "Database" },
+      { href: "/app/research/insights", label: "Insights", icon: "LineChart" },
+    ],
+    more: [
+      { href: "/app/research/methodology", label: "Methodology", icon: "BookOpen" },
+      { href: "/app/knowledge", label: "Crew lessons", icon: "Lightbulb" },
+      { href: "/app/help", label: "Help", icon: "LifeBuoy" },
+    ],
+  },
+  admin: {
+    main: [
       { href: "/app/admin/users", label: "People", icon: "Users", description: "Roles, missions and invites" },
       { href: "/app/admin/missions", label: "Missions", icon: "Rocket" },
       { href: "/app/admin/settings", label: "Settings", icon: "Settings" },
     ],
+    more: [
+      { href: "/app/admin/roles", label: "Who can see what", icon: "KeyRound" },
+      { href: "/app/help", label: "Help", icon: "LifeBuoy" },
+    ],
   },
-];
-
-const shared: NavGroup = {
-  label: "Shared",
-  items: [
-    { href: "/app/knowledge", label: "Crew knowledge", icon: "Lightbulb" },
-    { href: "/app/library", label: "Countermeasure library", icon: "Library" },
-    { href: "/app/notifications", label: "Notifications", icon: "Bell" },
-    { href: "/app/profile", label: "Profile & preferences", icon: "UserRound" },
-    { href: "/app/help", label: "Help & safety", icon: "LifeBuoy" },
-  ],
-};
-
-const crewShared: NavGroup = {
-  label: "More",
-  items: [
-    { href: "/app/library", label: "Self-care tips", icon: "Library" },
-    { href: "/app/notifications", label: "Notifications", icon: "Bell" },
-    { href: "/app/profile", label: "Profile", icon: "UserRound" },
-    { href: "/app/help", label: "Help", icon: "LifeBuoy" },
-  ],
-};
-
-const adminShared: NavGroup = {
-  label: "More",
-  items: [
-    { href: "/app/notifications", label: "Notifications", icon: "Bell" },
-    { href: "/app/profile", label: "Profile", icon: "UserRound" },
-    { href: "/app/help", label: "Help", icon: "LifeBuoy" },
-  ],
 };
 
 export function navForRole(role: Role): NavGroup[] {
-  // Crew members never see research/data tooling — that stays with staff roles.
-  if (role === "astronaut") return [...crew, crewShared];
-  if (role === "admin") return [...admin, adminShared];
-  const main = role === "medical" ? medical : role === "commander" ? commander : [];
-  return [...main, research, shared];
+  const m = MENUS[role];
+  return [
+    { label: "Menu", items: m.main },
+    { label: "More", items: m.more, collapsed: true },
+  ];
+}
+
+/** Every page a role can reach from the menu (used for search). */
+export function allNavItems(role: Role): NavItem[] {
+  return [...MENUS[role].main, ...MENUS[role].more, { href: "/app/notifications", label: "Notifications", icon: "Bell" }, { href: "/app/profile", label: "Profile", icon: "UserRound" }];
 }

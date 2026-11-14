@@ -21,7 +21,8 @@ test("a new user can register, log out and log back in", async ({ page }) => {
   await page.waitForURL(/\/app\/crew\/dashboard/);
   await expect(page.getByRole("heading", { name: /Hello, Test!/ })).toBeVisible();
 
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.getByRole("button", { name: "Account menu" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
   await page.waitForURL(/\/login/);
   await page.goto("/app/crew/dashboard");
   await expect(page).toHaveURL(/\/login/);
@@ -103,4 +104,25 @@ test("researcher can search NASA OSDR (live or labelled fallback)", async ({ pag
   await page.goto("/app/research/datasets?q=heart");
   await expect(page.getByText(/studies/).first()).toBeVisible();
   await expect(page.getByText(/Source:/).first()).toBeVisible();
+});
+
+test("notification bell shows a red count and clears once opened", async ({ page }) => {
+  await enterDemo(page, "Crew member");
+  const bell = page.getByRole("button", { name: /Notifications, \d+ new/ });
+  await expect(bell).toBeVisible();
+  await bell.click();
+  await page.waitForURL(/\/app\/notifications/);
+  await expect(page.getByRole("button", { name: "Notifications", exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Notifications", exact: true })).toBeVisible();
+});
+
+test("every role has a short main menu", async ({ page }) => {
+  for (const role of ["Crew member", "Flight surgeon", "Mission commander", "Researcher", "Administrator"]) {
+    await page.context().clearCookies();
+    await enterDemo(page, role);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const visible = page.locator("aside nav[aria-label='Main'] > ul a");
+    expect(await visible.count(), role).toBeLessThanOrEqual(5);
+  }
 });

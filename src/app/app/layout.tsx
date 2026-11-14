@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth/current-user";
 import { ARTICLES } from "@/lib/content/library";
 import { HELP } from "@/lib/content/help";
 import { getMission, getSettings, listCrew, listNotifications } from "@/lib/data/repo";
-import { navForRole } from "@/lib/nav";
+import { allNavItems, navForRole } from "@/lib/nav";
 import { ROLE_LABELS } from "@/lib/types";
 
 export default async function AuthedLayout({ children }: LayoutProps<"/app">) {
@@ -16,7 +16,7 @@ export default async function AuthedLayout({ children }: LayoutProps<"/app">) {
   ]);
   const groups = navForRole(user.role);
   const search: SearchItem[] = [
-    ...groups.flatMap((g) => g.items.map((i) => ({ label: i.label, href: i.href, group: g.label, keywords: i.description }))),
+    ...allNavItems(user.role).map((i) => ({ label: i.label, href: i.href, group: "Pages", keywords: i.description })),
     ...HELP.map((h) => ({ label: h.q, href: `/app/help#${h.id}`, group: "Help" })),
     ...ARTICLES.map((a) => ({ label: a.title, href: `/app/library#${a.slug}`, group: "Library", keywords: a.topic })),
   ];

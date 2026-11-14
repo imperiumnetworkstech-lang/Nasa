@@ -50,12 +50,11 @@ export function CommandPalette({ items }: { items: SearchItem[] }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex h-10 items-center gap-2 rounded-full border border-line/60 bg-surface px-4 text-sm text-muted shadow-[var(--shadow-card)] hover:text-primary md:w-72"
+        className="inline-flex h-10 items-center gap-2 rounded-full border border-line/60 bg-surface px-4 text-sm text-muted shadow-[var(--shadow-card)] hover:text-primary md:w-44"
         aria-label="Search (Ctrl+K)"
       >
         <Search aria-hidden className="h-4 w-4" />
-        <span className="hidden md:inline">Search…</span>
-        <kbd className="ml-auto hidden rounded border border-line px-1.5 text-[10px] md:inline">Ctrl K</kbd>
+        <span className="hidden md:inline">Search</span>
       </button>
       <dialog
         ref={ref}

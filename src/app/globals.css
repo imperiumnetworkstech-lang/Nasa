@@ -211,3 +211,11 @@ details[open] > :not(summary) { animation: pop-in 0.2s ease-out; }
 
 /* Grid and flex children may shrink below their content width, so nothing forces sideways scrolling on phones. */
 .grid > * { min-width: 0; }
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-14deg); }
+  40% { transform: rotate(12deg); }
+  60% { transform: rotate(-8deg); }
+  80% { transform: rotate(4deg); }
+}

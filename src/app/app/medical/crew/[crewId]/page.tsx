@@ -8,7 +8,7 @@ import { toActor } from "@/lib/auth/current-user";
 import { computeDrift } from "@/lib/health/baseline";
 import { dailySeries, meanOf } from "@/lib/health/series";
 import { VITAL_META } from "@/lib/health/vitals";
-import { fmtDateTime, scaleLabel } from "@/lib/utils";
+import { fmtDateTime, relativeTime, scaleLabel } from "@/lib/utils";
 import { carePlanForm, clinicalNoteForm, exercisePlanForm, medicationForm, symptomStatusForm } from "@/lib/actions/forms";
 import { getMissionDoc } from "@/lib/data/repo";
 import { weeklyBalance } from "@/lib/exercise/balance";
@@ -26,17 +26,21 @@ import { Field, Input, Select, Textarea } from "@/components/ui/form";
 
 export const metadata: Metadata = { title: "Crew detail" };
 
+const CHARTS = { heart: "Heart rate", oxygen: "Oxygen", sweat: "Sweat", temp: "Temperature", sleep: "Sleep", stress: "Stress" } as const;
+const CHART_KIND = { heart: "heart_rate", oxygen: "spo2", sweat: "eda", temp: "temperature", sleep: "heart_rate", stress: "heart_rate" } as const;
+
 const TABS = [
   ["overview", "Overview"],
   ["symptoms", "Symptoms"],
-  ["care", "Care & medication"],
-  ["notes", "Clinical notes"],
+  ["care", "Care"],
+  ["notes", "Notes"],
 ] as const;
 
 export default async function CrewDetail({ params, searchParams }: PageProps<"/app/medical/crew/[crewId]">) {
   const { crewId } = await params;
   const sp = await searchParams;
   const tab = (typeof sp.tab === "string" ? sp.tab : "overview") as (typeof TABS)[number][0];
+  const chart = (typeof sp.chart === "string" && sp.chart in CHARTS ? sp.chart : "heart") as keyof typeof CHARTS;
   // Viewing identifiable records is audited.
   const { user, subject, tz } = await assignedCrewMember(crewId, { auditAction: "record.view" });
   const settings = await getSettings();
@@ -65,12 +69,12 @@ export default async function CrewDetail({ params, searchParams }: PageProps<"/a
     <div className="space-y-6">
       <PageHeader
         title={`${subject.callSign} · ${subject.displayName}`}
-        description="Assigned crew member. Your view of this record is logged in the audit trail."
+        description="Your view of this record is logged."
         crumbs={[{ label: "Medical", href: "/app/medical/dashboard" }, { label: "Crew", href: "/app/medical/crew" }, { label: subject.callSign ?? subject.displayName }]}
         badges={demo ? <DemoBadge /> : undefined}
         actions={
           <ButtonLink href={`/app/medical/crew/${crewId}/handover`} variant="secondary">
-            <FileText aria-hidden className="h-4 w-4" /> Handover summary
+            <FileText aria-hidden className="h-4 w-4" /> Handover
           </ButtonLink>
         }
       />
@@ -83,104 +87,130 @@ export default async function CrewDetail({ params, searchParams }: PageProps<"/a
       </nav>
 
       {tab === "overview" ? (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
+          {/* At a glance */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Open alerts", value: alerts.filter((a) => a.status !== "resolved").length, href: "/app/medical/alerts", warn: alerts.some((a) => a.status !== "resolved") },
+              { label: "Symptom reports", value: symptoms.filter((s) => s.status !== "resolved").length, href: "?tab=symptoms", warn: symptoms.some((s) => s.status !== "resolved") },
+              { label: "Last check-in", value: checkIns[0] ? relativeTime(checkIns[0].at) : "—", href: "#", warn: false },
+            ].map((t) => (
+              <Link key={t.label} href={t.href} className={`lift rounded-[var(--radius-card)] p-4 shadow-[var(--shadow-card)] ${t.warn ? "bg-warn-soft" : "bg-surface"}`}>
+                <span className="block text-xl font-bold">{t.value}</span>
+                <span className="text-xs text-muted">{t.label}</span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Latest readings */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {(["heart_rate", "spo2", "eda", "temperature", "blood_pressure", "resp_rate"] as const).map((k) => {
+              const v = valid.find((x) => x.kind === k);
+              return (
+                <div key={k} className="rounded-2xl bg-surface p-3 shadow-[var(--shadow-card)]">
+                  <span className="text-xs text-muted">{VITAL_META[k].short}</span>
+                  <span className="block text-lg font-bold">
+                    {v ? (k === "blood_pressure" ? `${v.value}/${v.value2}` : v.value) : "—"} <span className="text-xs font-normal text-muted">{VITAL_META[k].unit}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* One chart at a time */}
           <Card>
-            <CardHeader title="Open alerts" action={<Link href="/app/medical/alerts" className="text-xs font-semibold text-primary">Alert centre</Link>} />
-            <CardBody className="space-y-2">
-              {alerts.filter((a) => a.status !== "resolved").length === 0 ? <p className="text-sm text-muted">None open.</p> : null}
-              {alerts
-                .filter((a) => a.status !== "resolved")
-                .map((a) => (
-                  <div key={a.id} className="rounded-2xl bg-surface-2 p-3 text-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <strong>{a.title}</strong>
+            <CardBody className="space-y-4">
+              <nav aria-label="Choose chart" className="flex flex-wrap gap-2">
+                {Object.entries(CHARTS).map(([k, c]) => (
+                  <Link key={k} href={`?tab=overview&chart=${k}`} scroll={false} aria-current={chart === k ? "true" : undefined} className={`rounded-full px-4 py-1.5 text-sm ${chart === k ? "hero-gradient font-semibold text-white" : "bg-surface-2 text-muted hover:text-primary"}`}>
+                    {c}
+                  </Link>
+                ))}
+              </nav>
+              {chart === "sleep" ? (
+                <TrendChart title="Sleep" unit="h" data={dailySeries(sleep, (s) => s.end, 30, { v: meanOf((s) => s.durationMin / 60) }, tz)} series={[{ key: "v", label: "Sleep", color: CHART_COLORS.violet, type: "bar", unit: "h" }]} demo={demo} />
+              ) : chart === "stress" ? (
+                <TrendChart
+                  title="Fatigue & stress (check-ins)"
+                  unit="/5"
+                  yDomain={[1, 5]}
+                  data={dailySeries(checkIns, (c) => c.at, 30, { fatigue: meanOf((c) => c.fatigue), stress: meanOf((c) => c.stress) }, tz)}
+                  series={[
+                    { key: "fatigue", label: "Fatigue", color: CHART_COLORS.violet, unit: "/5" },
+                    { key: "stress", label: "Stress", color: CHART_COLORS.coral, unit: "/5" },
+                  ]}
+                  demo={demo}
+                />
+              ) : (
+                <TrendChart
+                  title={CHARTS[chart]}
+                  unit={VITAL_META[CHART_KIND[chart]].unit}
+                  data={dailySeries(valid.filter((v) => v.kind === CHART_KIND[chart]), (v) => v.measuredAt, 30, { v: meanOf((v) => v.value) }, tz)}
+                  series={[{ key: "v", label: CHARTS[chart], color: CHART_COLORS.violet, type: "area", unit: VITAL_META[CHART_KIND[chart]].unit }]}
+                  demo={demo}
+                />
+              )}
+            </CardBody>
+          </Card>
+
+          {alerts.some((a) => a.status !== "resolved") ? (
+            <Card>
+              <CardHeader title="Open alerts" action={<Link href="/app/medical/alerts" className="text-xs font-semibold text-primary">Respond</Link>} />
+              <CardBody className="space-y-2">
+                {alerts
+                  .filter((a) => a.status !== "resolved")
+                  .map((a) => (
+                    <div key={a.id} className="flex items-center justify-between gap-2 rounded-2xl bg-surface-2 px-3 py-2.5 text-sm">
+                      <span className="min-w-0 truncate font-medium">{a.title}</span>
                       <SeverityBadge severity={a.severity} />
                     </div>
-                    <p className="text-xs text-muted">{a.reason}</p>
-                  </div>
-                ))}
-            </CardBody>
-          </Card>
-          <Card>
-            <CardHeader title="Baseline drift — heart rate" description={`Window ${th.baselineWindowDays} d · min ${th.baselineMinObservations} obs · threshold ${th.hrDriftZ} SD (configurable)`} />
-            <CardBody className="space-y-2 text-sm">
-              {drift.confidence === "insufficient" ? <Badge>Insufficient data</Badge> : drift.flagged ? <Badge tone="warn">Flagged</Badge> : <Badge tone="ok">Within baseline</Badge>}
-              <p className="text-muted">{drift.explanation}</p>
-              <p className="text-xs text-muted">Confidence: {drift.confidence} · n={drift.baseline.n}</p>
-            </CardBody>
-          </Card>
-          <Card className="lg:col-span-2">
-            <CardHeader title="Trends (30 days)" />
-            <CardBody className="grid gap-8 md:grid-cols-2">
-              <TrendChart title="Resting heart rate" unit="bpm" data={dailySeries(valid.filter((v) => v.kind === "heart_rate"), (v) => v.measuredAt, 30, { v: meanOf((v) => v.value) }, tz)} series={[{ key: "v", label: "HR", color: CHART_COLORS.violet, type: "area", unit: "bpm" }]} demo={demo} />
-              <TrendChart title="Sleep" unit="h" data={dailySeries(sleep, (s) => s.end, 30, { v: meanOf((s) => s.durationMin / 60) }, tz)} series={[{ key: "v", label: "Sleep", color: CHART_COLORS.violet, type: "bar", unit: "h" }]} demo={demo} />
-              <TrendChart
-                title="SpO₂ & EDA (sweat)"
-                unit="%"
-                rightUnit="µS"
-                data={dailySeries(valid, (v) => v.measuredAt, 30, { spo2: meanOf((v) => (v.kind === "spo2" ? v.value : null)), eda: meanOf((v) => (v.kind === "eda" ? v.value : null)) }, tz)}
-                series={[
-                  { key: "spo2", label: "SpO₂", color: CHART_COLORS.teal, unit: "%" },
-                  { key: "eda", label: "EDA", color: CHART_COLORS.amber, axis: "right", unit: "µS" },
-                ]}
-                demo={demo}
-              />
-              <TrendChart
-                title="Self-reported fatigue & stress (check-ins)"
-                unit="/5"
-                yDomain={[1, 5]}
-                data={dailySeries(checkIns, (c) => c.at, 30, { fatigue: meanOf((c) => c.fatigue), stress: meanOf((c) => c.stress) }, tz)}
-                series={[
-                  { key: "fatigue", label: "Fatigue", color: CHART_COLORS.violet, unit: "/5" },
-                  { key: "stress", label: "Stress", color: CHART_COLORS.coral, unit: "/5" },
-                ]}
-                demo={demo}
-              />
-            </CardBody>
-          </Card>
-          <PhysioStateCard sessions={wearables} tz={tz} />
-          <Card>
-            <CardHeader title="Shared mood entries" description={`${moods.length} of ${moodsAll.length} entries shared by the crew member · journal is never visible`} />
-            <CardBody className="space-y-2 text-sm">
-              {moods.slice(0, 6).map((m) => (
-                <div key={m.id} className="flex justify-between gap-2 rounded-2xl bg-surface-2 px-3 py-2">
-                  <span>
-                    Mood {scaleLabel("mood", m.mood).toLowerCase()}, stress {scaleLabel("stress", m.stress).toLowerCase()}
-                  </span>
-                  <span className="text-xs text-muted">{fmtDateTime(m.at, tz)}</span>
-                </div>
-              ))}
-              {moods.length === 0 ? <p className="text-muted">No shared entries.</p> : null}
-            </CardBody>
-          </Card>
-          <Card>
-            <CardHeader title="Appetite & menu fatigue" description="From the crew member's meal ratings (Menu Fatigue Radar)" />
-            <CardBody className="space-y-2 text-sm">
-              <p>
-                Meals finished: <strong>{food.finishedRecent === null ? "—" : `${Math.round(food.finishedRecent * 100)}%`}</strong> this week vs{" "}
-                {food.finishedBefore === null ? "—" : `${Math.round(food.finishedBefore * 100)}%`} last week {food.appetiteDropping ? <Badge tone="warn">Dipping</Badge> : null}
-              </p>
-              {food.rest.length ? <p className="text-muted">Tiring of: {food.rest.map((r) => r.item).join(", ")}</p> : <p className="text-muted">No menu fatigue detected.</p>}
-            </CardBody>
-          </Card>
-          <ExerciseBalance balance={exPlan ? weeklyBalance(acts8, exPlan, new Date()) : null} slots={[]} setBy={exPlan?.setByName ?? null} tz={tz} />
-          <Card className="lg:col-span-2">
-            <CardHeader title="Latest vitals" />
-            <CardBody>
-              <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                {(Object.keys(VITAL_META) as (keyof typeof VITAL_META)[]).map((k) => {
-                  const v = vitals.find((x) => x.kind === k);
-                  return (
-                    <li key={k} className="rounded-2xl bg-surface-2 px-3 py-2">
-                      <span className="text-xs text-muted">{VITAL_META[k].label}</span>
-                      <span className="block font-semibold">{v ? `${k === "blood_pressure" ? `${v.value}/${v.value2}` : v.value} ${v.unit}` : "—"}</span>
-                      <span className="text-[11px] text-muted">{v ? `${v.source} · ${fmtDateTime(v.measuredAt, tz)}${v.quality !== "valid" ? ` · ${v.quality}` : ""}` : "no data"}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </CardBody>
-          </Card>
+                  ))}
+              </CardBody>
+            </Card>
+          ) : null}
+
+          {/* Everything else, folded away */}
+          <details className="group rounded-[var(--radius-card)] bg-surface shadow-[var(--shadow-card)]">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 font-semibold">
+              More details
+              <span className="text-xs font-normal text-muted">baseline, sensor state, mood, appetite, exercise</span>
+            </summary>
+            <div className="grid gap-6 p-5 pt-0 lg:grid-cols-2">
+              <Card>
+                <CardHeader title="Heart-rate baseline" description={`${th.baselineWindowDays}-day window · threshold ${th.hrDriftZ} SD (configurable)`} />
+                <CardBody className="space-y-2 text-sm">
+                  {drift.confidence === "insufficient" ? <Badge>Not enough data</Badge> : drift.flagged ? <Badge tone="warn">Different from usual</Badge> : <Badge tone="ok">Usual</Badge>}
+                  <p className="text-muted">{drift.explanation}</p>
+                </CardBody>
+              </Card>
+              <PhysioStateCard sessions={wearables} tz={tz} compact />
+              <Card>
+                <CardHeader title="Shared mood" description={`${moods.length} of ${moodsAll.length} entries shared · journal never visible`} />
+                <CardBody className="space-y-2 text-sm">
+                  {moods.slice(0, 4).map((m) => (
+                    <div key={m.id} className="flex justify-between gap-2 rounded-2xl bg-surface-2 px-3 py-2">
+                      <span>
+                        Mood {scaleLabel("mood", m.mood).toLowerCase()}, stress {scaleLabel("stress", m.stress).toLowerCase()}
+                      </span>
+                      <span className="text-xs text-muted">{fmtDateTime(m.at, tz)}</span>
+                    </div>
+                  ))}
+                  {moods.length === 0 ? <p className="text-muted">No shared entries.</p> : null}
+                </CardBody>
+              </Card>
+              <Card>
+                <CardHeader title="Appetite" description="From meal ratings" />
+                <CardBody className="space-y-2 text-sm">
+                  <p>
+                    Meals finished: <strong>{food.finishedRecent === null ? "—" : `${Math.round(food.finishedRecent * 100)}%`}</strong> this week vs{" "}
+                    {food.finishedBefore === null ? "—" : `${Math.round(food.finishedBefore * 100)}%`} last week {food.appetiteDropping ? <Badge tone="warn">Dipping</Badge> : null}
+                  </p>
+                  {food.rest.length ? <p className="text-muted">Tiring of: {food.rest.map((r) => r.item).join(", ")}</p> : <p className="text-muted">No menu fatigue detected.</p>}
+                </CardBody>
+              </Card>
+              <ExerciseBalance balance={exPlan ? weeklyBalance(acts8, exPlan, new Date()) : null} slots={[]} setBy={exPlan?.setByName ?? null} tz={tz} />
+            </div>
+          </details>
         </div>
       ) : null}
 

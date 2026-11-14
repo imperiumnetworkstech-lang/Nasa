@@ -22,7 +22,7 @@ export default async function ResearchHome() {
   const apod = await getApod();
   return (
     <div className="space-y-6">
-      <PageHeader title="Research explorer" description="Public space life-science data with full provenance. Research data — not live astronaut health and not for individual diagnosis." />
+      <PageHeader title="Research explorer" description="Public space-biology studies, with sources on everything." />
       <section className="hero-gradient relative overflow-hidden rounded-[var(--radius-card)] p-6 text-white shadow-[var(--shadow-pop)]">
         <div className="relative z-10 max-w-[65%] space-y-3">
           <p className="text-xs font-medium text-white/80">NASA Open Science Data Repository</p>
@@ -48,6 +48,12 @@ export default async function ResearchHome() {
           </Link>
         ))}
       </div>
+      <details className="rounded-[var(--radius-card)] bg-surface shadow-[var(--shadow-card)]">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 font-semibold">
+          NASA tools & space picture of the day
+          <span className="text-xs font-normal text-muted">optional</span>
+        </summary>
+        <div className="p-5 pt-0">
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title="Official NASA visualisers" description="Linked, not recreated" />
@@ -84,6 +90,8 @@ export default async function ResearchHome() {
           </CardBody>
         </Card>
       </div>
+        </div>
+      </details>
       <Callout tone="warn">Some astronaut-derived sequence data in OSDR is controlled-access. Antariksha never requests or bypasses restricted data.</Callout>
     </div>
   );

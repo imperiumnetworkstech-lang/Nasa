@@ -42,6 +42,10 @@ export function SyncStatus({ commDelaySeconds }: { commDelaySeconds: number }) {
     return () => clearInterval(t);
   }, []);
 
+  // Stay out of the way: only show something when offline or when entries are waiting to send.
+  if (online && queued === 0) return <span className="sr-only" aria-live="polite">Online</span>;
+  void commDelaySeconds;
+  void lastSync;
   return (
     <div className="flex items-center gap-2 text-xs" aria-live="polite">
       {online ? (
