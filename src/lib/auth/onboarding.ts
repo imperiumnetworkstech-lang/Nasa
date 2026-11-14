@@ -46,6 +46,14 @@ export async function createProfile(uid: string, email: string, displayName: str
 export class InviteError extends Error {}
 
 export async function withSession(res: NextResponse, payload: SessionPayload): Promise<NextResponse> {
-  res.cookies.set(SESSION_COOKIE, await signSession(payload), sessionCookieOptions);
+  let token: string;
+  try {
+    token = await signSession(payload);
+  } catch (e) {
+    // Most often: SESSION_SECRET missing/short on the host. Say so instead of a blank 500.
+    console.error("[auth] could not sign session:", e instanceof Error ? e.message : e);
+    return NextResponse.json({ error: "Sign-in is not configured on this server: set SESSION_SECRET (32+ characters) in the hosting environment variables and redeploy." }, { status: 500 });
+  }
+  res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
   return res;
 }
