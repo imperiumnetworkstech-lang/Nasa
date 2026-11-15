@@ -6,6 +6,9 @@ import type { App } from "firebase-admin/app";
  * Firebase credentials are configured, so local/demo deployments never load it at all.
  */
 export function isAdminConfigured(): boolean {
+  // Firebase is OFF unless explicitly switched on (USE_FIREBASE=true). Without it the app uses its
+  // built-in server store with synthetic demo data — no external quota to run out.
+  if (process.env.USE_FIREBASE !== "true") return false;
   return Boolean(
     process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
       process.env.FIREBASE_CLIENT_EMAIL &&
