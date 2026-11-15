@@ -15,7 +15,7 @@ export interface QueryOptions {
 }
 
 export interface DocStore {
-  readonly backend: "firestore" | "local";
+  readonly backend: "firestore" | "local" | "redis";
   get<T>(path: string): Promise<T | null>;
   list<T>(collectionPath: string, q?: QueryOptions): Promise<T[]>;
   set<T extends object>(path: string, data: T): Promise<void>;
