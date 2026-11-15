@@ -3,7 +3,8 @@ import { addMissionDoc, addPersonal, listMembers, listMissionDocs, notify, updat
 import { analyzeVitals } from "@/lib/ml/vitals-model";
 import { GUIDE, type Condition } from "@/lib/ml/condition-guide";
 import { RANGES } from "@/lib/ml/vitals-reference";
-import type { Scenario } from "@/lib/scenarios";
+import { SCENARIO_BASE, type Scenario } from "@/lib/scenarios";
+import { currentActivity, forgetPersonalProfile, getPersonalProfile } from "@/lib/health/personal-server";
 import type { HealthCase, UserProfile, VitalKind } from "@/lib/types";
 
 /**
@@ -14,9 +15,19 @@ import type { HealthCase, UserProfile, VitalKind } from "@/lib/types";
 export async function createCaseFromReadings(crew: UserProfile, scenario: Scenario): Promise<HealthCase> {
   if (!crew.missionId) throw new Error("Crew member is not on a mission");
   const name = crew.callSign ? `${crew.displayName} (${crew.callSign})` : crew.displayName;
-  // Small sensor jitter so repeated runs don't look copy-pasted.
-  const readings = Object.fromEntries(Object.entries(scenario.readings).map(([k, v]) => [k, Math.round((v + (Math.random() - 0.5) * (k === "temp" || k === "skinTemp" ? 0.1 : k === "eda" ? 0.4 : 1)) * 10) / 10])) as Scenario["readings"];
-  const a = analyzeVitals(readings, name);
+  // Personal baseline from the astronaut's own history, and what they're doing right now.
+  const profile = await getPersonalProfile(crew.uid, { fresh: true });
+  const hasBaseline = Object.keys(profile.baseline).length >= 4;
+  // Readings the scenario doesn't change take this astronaut's own usual value; then a little sensor jitter.
+  const readings = Object.fromEntries(
+    Object.entries(scenario.readings).map(([k, v]) => {
+      const key = k as keyof Scenario["readings"];
+      const start = hasBaseline && v === SCENARIO_BASE[key] && profile.baseline[key] !== undefined ? profile.baseline[key]! : v;
+      return [k, Math.round((start + (Math.random() - 0.5) * (k === "temp" || k === "skinTemp" ? 0.1 : k === "eda" ? 0.4 : 1)) * 10) / 10];
+    }),
+  ) as Scenario["readings"];
+  const activity = scenario.context ?? (await currentActivity(crew.missionId, crew.uid));
+  const a = analyzeVitals(readings, name, { baseline: hasBaseline ? profile.baseline : undefined, activity });
   const g = GUIDE[a.condition as Condition];
   const now = new Date().toISOString();
   const isNormal = a.condition === "normal";
@@ -28,7 +39,21 @@ export async function createCaseFromReadings(crew: UserProfile, scenario: Scenar
     source: "scenario",
     createdAt: now,
     readings,
-    analysis: { condition: a.condition, label: g.label, emoji: g.emoji, severity: a.severity, confidencePct: a.confidencePct, message: a.message, probabilities: a.probabilities, params: a.params, modelVersion: a.modelVersion },
+    analysis: {
+      condition: a.condition,
+      label: g.label,
+      emoji: g.emoji,
+      severity: a.severity,
+      confidencePct: a.confidencePct,
+      message: a.message,
+      probabilities: a.probabilities,
+      params: a.params,
+      modelVersion: a.modelVersion,
+      personalBaseline: a.personalBaseline,
+      expected: a.expected,
+      contextNote: a.contextNote,
+      activity: activity ?? null,
+    },
     precautions: g.precautions,
     remedy: g.remedy,
     medicines: g.medicines,
@@ -55,6 +80,8 @@ export async function createCaseFromReadings(crew: UserProfile, scenario: Scenar
   }
   await addPersonal(crew.uid, "vitals", { uid: crew.uid, missionId: crew.missionId, origin: "simulated", createdAt: now, enteredBy: crew.uid, kind: "blood_pressure", value: readings.sbp, value2: readings.dbp, unit: "mmHg", measuredAt: now, source: "simulated", device: "Suit sensor (demo scenario)", quality: "valid" });
 
+  forgetPersonalProfile(crew.uid); // drift score changes with the new reading
+
   // Notify everyone who needs to know.
   const members = await listMembers(crew.missionId);
   const staff = members.filter((m) => m.assignment === "medical" || m.assignment === "commander");
@@ -63,6 +90,10 @@ export async function createCaseFromReadings(crew: UserProfile, scenario: Scenar
     const open = (await listMissionDocs(crew.missionId, "cases", { where: [["crewUid", "==", crew.uid]] })).filter((c) => c.status === "active");
     for (const c of open) await updateMissionDoc(crew.missionId, "cases", c.id, { status: "resolved", resolvedAt: now, doctorNote: c.doctorNote ?? "Closed automatically: readings returned to normal." });
     for (const m of staff) await notify({ uid: m.uid, kind: "alert", title: `✅ ${name} is normal`, body: "All suit readings are within range.", href: m.assignment === "medical" ? "/app/medical/dashboard" : "/app/mission/dashboard" });
+  } else if (a.expected) {
+    // Context-aware: expected during a workout, so no siren — just a heads-up.
+    for (const m of staff)
+      await notify({ uid: m.uid, kind: "alert", title: `🏃 ${name}: ${g.label.toLowerCase()} during exercise`, body: "Expected during a workout. Re-check after the session.", href: m.assignment === "medical" ? "/app/medical/dashboard" : "/app/mission/dashboard" });
   } else {
     await notify({ uid: crew.uid, kind: "alert", title: `${g.emoji} ${g.label} — do this now`, body: g.precautions[0], href: "/app/crew/dashboard" });
     for (const m of staff) {

@@ -12,6 +12,7 @@ interface Active {
   label: string;
   emoji: string;
   severity: string;
+  expected?: boolean;
   message: string;
 }
 
@@ -68,7 +69,9 @@ export function StaffCaseWatcher() {
           if (seen.current.size === 0) j.active.forEach((a) => seen.current!.add(a.id));
           saveSeen(seen.current);
         }
-        const fresh = j.active.filter((a) => !seen.current!.has(a.id));
+        // Expected findings (e.g. high heart rate during a scheduled workout) never sound the siren.
+        const fresh = j.active.filter((a) => !seen.current!.has(a.id) && !a.expected);
+        j.active.filter((a) => a.expected).forEach((a) => seen.current!.add(a.id));
         if (fresh.length) {
           fresh.forEach((a) => seen.current!.add(a.id));
           saveSeen(seen.current);
@@ -95,7 +98,7 @@ export function StaffCaseWatcher() {
       {!unlocked ? (
         <button
           onClick={() => void unlockAudio()}
-          className="pop-in fixed bottom-24 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#d64545] px-4 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-pop)] lg:bottom-6"
+          className="pop-in fixed inset-x-4 bottom-24 z-40 mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-full bg-[#d64545] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-[var(--shadow-pop)] lg:bottom-6"
         >
           <Volume2 aria-hidden className="h-4 w-4" /> Tap to turn on emergency alarm sound
         </button>

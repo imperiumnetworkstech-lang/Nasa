@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/misc";
 import { Card, CardBody, CardHeader, ViewAll } from "@/components/ui/card";
 import { DemoBadge } from "@/components/ui/badge";
 import { CaseCard, CrewStatusBoard } from "@/components/cases/staff";
+import { profilesFor } from "@/lib/health/personal-server";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -17,6 +18,7 @@ export default async function MissionHome() {
   const now = requestTime();
   const [{ cases, latest }, events] = await Promise.all([latestCaseByCrew(mission.id), listMissionDocs(mission.id, "missionEvents")]);
   const active = cases.filter((c) => c.status === "active");
+  const drift = await profilesFor(crew.map((c) => c.uid));
   const normalCount = crew.filter((m) => latest.get(m.uid) && latest.get(m.uid)!.status !== "active").length;
   const upcoming = events.filter((e) => Date.parse(e.start) > now).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 3);
 
@@ -34,7 +36,7 @@ export default async function MissionHome() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold">Crew status</h2>
-        <CrewStatusBoard crew={crew} latest={latest} now={now} />
+        <CrewStatusBoard crew={crew} latest={latest} now={now} drift={drift} />
       </section>
 
       <section className="space-y-3">

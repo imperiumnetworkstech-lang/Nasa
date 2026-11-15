@@ -14,6 +14,8 @@ const EXPECTED: Record<string, string> = {
   "high-bp": "hypertension",
   "low-bp": "hypotension",
   "fast-breathing": "tachypnea",
+  workout: "tachycardia",
+  "early-warning": "tachycardia",
 };
 
 describe("vitals condition model", () => {

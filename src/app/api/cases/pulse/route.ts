@@ -14,6 +14,6 @@ export async function GET() {
   const version = cases.map((c) => `${c.id}:${c.status}:${c.reviewedAt ?? ""}`).join("|");
   const active = cases
     .filter((c) => c.status === "active")
-    .map((c) => ({ id: c.id, crewName: c.crewName, label: c.analysis.label, emoji: c.analysis.emoji, severity: c.analysis.severity, message: c.analysis.message, createdAt: c.createdAt }));
+    .map((c) => ({ id: c.id, crewName: c.crewName, label: c.analysis.label, emoji: c.analysis.emoji, severity: c.analysis.severity, expected: Boolean(c.analysis.expected), message: c.analysis.message, createdAt: c.createdAt }));
   return NextResponse.json({ version, active }, { headers: { "cache-control": "no-store" } });
 }

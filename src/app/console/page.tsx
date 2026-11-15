@@ -12,6 +12,7 @@ import { DemoBadge } from "@/components/ui/badge";
 import { ConsoleClient } from "@/components/cases/console-client";
 import { AutoRefresh } from "@/components/cases/live";
 import { CaseCard, CrewStatusBoard } from "@/components/cases/staff";
+import { profilesFor } from "@/lib/health/personal-server";
 
 export const metadata: Metadata = { title: "Scenario console" };
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export default async function ConsolePage() {
   const { cases, latest } = await latestCaseByCrew(DEMO_MISSION_ID);
   const now = requestTime();
   const active = cases.filter((c) => c.status === "active");
+  const drift = await profilesFor(crew.map((c) => c.uid));
   const tabs = [
     { who: "Crew (astronaut)", url: "http://localhost:3000/login", hint: "Sign in as Crew member" },
     { who: "Base-station doctor", url: "http://127.0.0.1:3000/login", hint: "Sign in as Base-station doctor" },
@@ -56,7 +58,7 @@ export default async function ConsolePage() {
 
         <section className="space-y-3">
           <h2 className="text-lg font-bold">Live crew status</h2>
-          <CrewStatusBoard crew={crew} latest={latest} now={now} />
+          <CrewStatusBoard crew={crew} latest={latest} now={now} drift={drift} />
         </section>
 
         <section className="space-y-3">

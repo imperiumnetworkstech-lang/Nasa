@@ -19,18 +19,26 @@ export function ParamTable({ params }: { params: CaseLike["analysis"]["params"] 
   return (
     <ul className="grid gap-2 sm:grid-cols-2">
       {params.map((p) => (
-        <li key={p.key} className={cn("flex items-center justify-between gap-2 rounded-2xl px-3 py-2 text-sm", p.status === "normal" ? "bg-surface-2" : "bg-danger-soft")}>
+        <li key={p.key} className={cn("flex items-center justify-between gap-2 rounded-2xl px-3 py-2 text-sm", p.status !== "normal" ? "bg-danger-soft" : p.unusual ? "bg-warn-soft" : "bg-surface-2")}>
           <span className="min-w-0">
             <span className="block truncate font-medium">{p.label}</span>
             <span className="block text-[11px] text-muted">
               Normal {p.low}–{p.high} {p.unit}
             </span>
+            {p.usual !== undefined ? (
+              <span className={cn("block text-[11px]", p.unusual ? "font-semibold text-warn" : "text-muted")}>
+                Their usual {p.usual} · {p.pctFromUsual! > 0 ? "+" : ""}
+                {p.pctFromUsual}%
+              </span>
+            ) : null}
           </span>
           <span className="shrink-0 text-right">
             <span className="block font-bold tabular-nums">
               {p.value} <span className="text-xs font-normal text-muted">{p.unit}</span>
             </span>
-            {p.status === "normal" ? (
+            {p.status === "normal" && p.unusual ? (
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-warn">Unusual for them</span>
+            ) : p.status === "normal" ? (
               <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-ok">
                 <Check aria-hidden className="h-3 w-3" /> Normal
               </span>
@@ -106,11 +114,15 @@ export function CaseView({ c, audience }: { c: CaseLike; audience: "crew" | "sta
             <SeverityPill severity={a.severity} />
           </div>
           <p className="text-sm text-muted">{a.message}</p>
-          <p className="mt-1 text-xs text-muted">Model confidence {a.confidencePct}% · model v{a.modelVersion}</p>
+          <p className="mt-1 text-xs text-muted">
+            Model confidence {a.confidencePct}% · model v{a.modelVersion}
+            {a.personalBaseline ? " · compared with their personal baseline" : ""}
+          </p>
+          {a.expected ? <p className="mt-2 rounded-2xl bg-primary-soft px-3 py-2 text-sm font-semibold text-primary">🏃 {a.contextNote}</p> : null}
         </div>
       </div>
 
-      {a.severity !== "normal" && audience === "crew" ? (
+      {a.severity !== "normal" && audience === "crew" && !a.expected ? (
         <section className="rounded-2xl border border-danger/30 bg-danger-soft p-3">
           <p className="mb-1 text-sm font-bold text-danger">Do this now</p>
           <ul className="list-disc space-y-0.5 pl-5 text-sm">

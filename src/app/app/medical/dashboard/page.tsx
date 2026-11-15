@@ -9,6 +9,7 @@ import { missionDay, requestTime } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/misc";
 import { DemoBadge } from "@/components/ui/badge";
 import { CaseCard, CrewStatusBoard } from "@/components/cases/staff";
+import { profilesFor } from "@/lib/health/personal-server";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -22,6 +23,7 @@ export default async function MedicalHome() {
     listMissionDocs(mission.id, "alerts"),
     listMissionDocs(mission.id, "questions"),
   ]);
+  const drift = await profilesFor(crew.map((c) => c.uid));
   const active = cases.filter((c) => c.status === "active").sort((a, b) => (a.analysis.severity === b.analysis.severity ? b.createdAt.localeCompare(a.createdAt) : a.analysis.severity === "urgent" ? -1 : 1));
   const openAlerts = alerts.filter((a) => a.status === "open").length;
   const waitingQs = questions.filter((q) => !q.answer && questionStage(q, now) === "with-doctor").length;
@@ -51,7 +53,7 @@ export default async function MedicalHome() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold">Crew status</h2>
-        <CrewStatusBoard crew={crew} latest={latest} now={now} />
+        <CrewStatusBoard crew={crew} latest={latest} now={now} drift={drift} />
       </section>
 
       <div className="flex flex-wrap gap-2 text-sm">

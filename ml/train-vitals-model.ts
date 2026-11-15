@@ -41,18 +41,39 @@ function normal(): Readings {
   };
 }
 
-/** Sample one example of a condition: start healthy, then shift the defining signals. */
-function sample(c: Condition): Readings {
-  const r = normal();
+/**
+ * One astronaut's PERSONAL usual values (their baseline / "digital twin").
+ * People differ: a fit astronaut may rest at 55 bpm, another at 75.
+ */
+function person(): Readings {
+  return normal();
+}
+
+/**
+ * Sample one example of a condition for a given person: start at THEIR usual values, then
+ * shift the defining signals. `early` marks early-warning examples: a big change from the
+ * person's own usual that is still inside the general normal range (only personal features
+ * can catch these).
+ */
+function sample(c: Condition, base: Readings): { r: Readings; early: boolean } {
+  const r = { ...base };
+  for (const k of VITAL_KEYS) r[k] += gauss(0, (RANGES[k].high - RANGES[k].low) * 0.03); // normal day-to-day wobble
+  let early = false;
   switch (c) {
     case "normal":
       break;
     case "bradycardia":
-      r.hr = uni(30, 49);
+      if (rnd() < 0.3 && base.hr >= 72) {
+        early = true; // e.g. usual 78 → 51: still "in range" but a big drop for this person
+        r.hr = uni(50, base.hr - 22);
+      } else r.hr = uni(30, 49);
       r.sbp -= uni(0, 10);
       break;
     case "tachycardia":
-      r.hr = uni(102, 150);
+      if (rnd() < 0.3 && base.hr <= 66) {
+        early = true; // e.g. usual 58 → 95: still under 100, but +60% for this person
+        r.hr = uni(base.hr + 30, 99);
+      } else r.hr = uni(102, 150);
       r.rr += uni(0, 3);
       break;
     case "hypoxemia":
@@ -67,7 +88,10 @@ function sample(c: Condition): Readings {
       r.sbp -= uni(0, 12);
       break;
     case "fever":
-      r.temp = uni(38.4, 40.5);
+      if (rnd() < 0.3 && base.temp + 0.9 < 38.25) {
+        early = true; // usual 37.0 → 38.1: under the 38.3 line, but +1.1 °C for this person
+        r.temp = uni(base.temp + 0.9, 38.25);
+      } else r.temp = uni(38.4, 40.5);
       r.hr += uni(8, 25);
       r.skinTemp += uni(0.5, 1.5);
       break;
@@ -87,7 +111,7 @@ function sample(c: Condition): Readings {
   }
   // Sensor noise.
   for (const k of VITAL_KEYS) r[k] += gauss(0, (RANGES[k].high - RANGES[k].low) * 0.01);
-  return r;
+  return { r, early };
 }
 
 function softmax(z: number[]) {
@@ -134,13 +158,42 @@ function loadCsv(file: string): { r: Readings; y: Condition }[] {
   });
 }
 
+type Example = { r: Readings; base: Readings; y: Condition; early: boolean };
+
+function evaluate(model: { W: number[][]; b: number[] }, set: Example[], feats: (d: Example) => number[]) {
+  const K = CONDITIONS.length;
+  const confusion = Array.from({ length: K }, () => Array(K).fill(0));
+  let earlyRight = 0;
+  let earlyN = 0;
+  for (const d of set) {
+    const p = predict(model, feats(d));
+    const guess = p.indexOf(Math.max(...p));
+    confusion[CONDITIONS.indexOf(d.y)][guess]++;
+    if (d.early) {
+      earlyN++;
+      if (CONDITIONS[guess] === d.y) earlyRight++;
+    }
+  }
+  const correct = confusion.reduce((s, row, i) => s + row[i], 0);
+  const recall = Object.fromEntries(CONDITIONS.map((c, i) => [c, +(confusion[i][i] / Math.max(1, confusion[i].reduce((a, b) => a + b, 0))).toFixed(3)]));
+  return { accuracy: correct / set.length, recall, confusion, earlyWarning: { right: earlyRight, total: earlyN, accuracy: earlyN ? earlyRight / earlyN : null } };
+}
+
 function main() {
   const perClass = 600;
-  let data: { r: Readings; y: Condition }[] = [];
-  for (const c of CONDITIONS) for (let i = 0; i < perClass; i++) data.push({ r: sample(c), y: c });
+  let data: Example[] = [];
+  for (const c of CONDITIONS)
+    for (let i = 0; i < perClass; i++) {
+      const base = person();
+      const s = sample(c, base);
+      data.push({ r: s.r, base, y: c, early: s.early });
+    }
   const csvArg = process.argv.indexOf("--csv");
-  const source = csvArg > 0 ? `Synthetic (${perClass}/class) + ${process.argv[csvArg + 1]}` : `Synthetic from published reference ranges (${perClass} per condition)`;
-  if (csvArg > 0) data = data.concat(loadCsv(process.argv[csvArg + 1]));
+  const source =
+    csvArg > 0
+      ? `Synthetic (${perClass}/class) + ${process.argv[csvArg + 1]}`
+      : `Synthetic from published reference ranges (${perClass} per condition, each example from a simulated astronaut with their own baseline)`;
+  if (csvArg > 0) data = data.concat(loadCsv(process.argv[csvArg + 1]).map((d) => ({ ...d, base: d.r, early: false })));
 
   // Shuffle and split 80/20.
   for (let i = data.length - 1; i > 0; i--) {
@@ -151,32 +204,44 @@ function main() {
   const trainSet = data.slice(0, cut);
   const testSet = data.slice(cut);
   const K = CONDITIONS.length;
-  const model = train(trainSet.map((d) => featurize(d.r)), trainSet.map((d) => CONDITIONS.indexOf(d.y)), K);
 
-  const confusion = Array.from({ length: K }, () => Array(K).fill(0));
-  for (const d of testSet) {
-    const p = predict(model, featurize(d.r));
-    confusion[CONDITIONS.indexOf(d.y)][p.indexOf(Math.max(...p))]++;
-  }
-  const correct = confusion.reduce((s, row, i) => s + row[i], 0);
-  const recall = Object.fromEntries(CONDITIONS.map((c, i) => [c, +(confusion[i][i] / Math.max(1, confusion[i].reduce((a, b) => a + b, 0))).toFixed(3)]));
-  const accuracy = correct / testSet.length;
-  console.log(`Held-out accuracy ${(accuracy * 100).toFixed(1)}% on ${testSet.length} examples`);
-  console.log("Recall per condition:", recall);
+  // Full model: general-range features + personal-baseline features (32).
+  const full = (d: Example) => featurize(d.r, d.base);
+  const model = train(trainSet.map(full), trainSet.map((d) => CONDITIONS.indexOf(d.y)), K);
+  const ev = evaluate(model, testSet, full);
+
+  // Comparison: the same model WITHOUT personal features (general ranges only, 24).
+  const generalOnly = (d: Example) => featurize(d.r, d.base).slice(0, VITAL_KEYS.length * 3);
+  const plain = train(trainSet.map(generalOnly), trainSet.map((d) => CONDITIONS.indexOf(d.y)), K);
+  const evPlain = evaluate(plain, testSet, generalOnly);
+
+  console.log(`Held-out accuracy WITH personal baseline: ${(ev.accuracy * 100).toFixed(1)}% on ${testSet.length} examples`);
+  console.log(`Held-out accuracy WITHOUT personal baseline: ${(evPlain.accuracy * 100).toFixed(1)}%`);
+  console.log(`Early-warning cases (in range, but unusual for the person): with ${ev.earlyWarning.right}/${ev.earlyWarning.total}, without ${evPlain.earlyWarning.right}/${evPlain.earlyWarning.total}`);
+  console.log("Recall per condition:", ev.recall);
 
   const out = {
     name: "Antariksha vitals condition model",
-    version: "1.0.0",
+    version: "2.0.0",
     trainedAt: new Date().toISOString(),
-    algorithm: "Multinomial logistic regression on standardised values + out-of-range distances (24 features)",
+    algorithm: "Multinomial logistic regression on 32 features: per vital, position in the general range + distance below/above it (24) and change from the astronaut's own baseline (8)",
     conditions: CONDITIONS,
     vitals: VITAL_KEYS,
     weights: model.W,
     bias: model.b,
-    evaluation: { method: "Held-out 20% split", trainSize: trainSet.length, testSize: testSet.length, accuracy, recall, confusion },
+    evaluation: {
+      method: "Held-out 20% split",
+      trainSize: trainSet.length,
+      testSize: testSet.length,
+      accuracy: ev.accuracy,
+      recall: ev.recall,
+      confusion: ev.confusion,
+      earlyWarning: ev.earlyWarning,
+      withoutPersonalBaseline: { accuracy: evPlain.accuracy, earlyWarning: evPlain.earlyWarning },
+    },
     data: {
       source,
-      note: "No public labelled astronaut suit dataset exists; examples are generated from clinical norms adjusted with spaceflight research (see vitals-reference.ts). Retrain with real, doctor-labelled suit data when available.",
+      note: "No public labelled astronaut suit dataset exists; examples are generated from clinical norms adjusted with spaceflight research (see vitals-reference.ts), around simulated personal baselines. Retrain with real, doctor-labelled suit data when available.",
     },
   };
   const file = path.join(process.cwd(), "src", "lib", "ml", "vitals-model.json");

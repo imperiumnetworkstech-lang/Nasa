@@ -555,8 +555,14 @@ export interface HealthCase {
     confidencePct: number;
     message: string;
     probabilities: { condition: string; label: string; pct: number }[];
-    params: { key: string; label: string; value: number; unit: string; low: number; high: number; status: "low" | "normal" | "high"; deviationPct: number }[];
+    params: { key: string; label: string; value: number; unit: string; low: number; high: number; status: "low" | "normal" | "high"; deviationPct: number; usual?: number; pctFromUsual?: number; unusual?: boolean }[];
     modelVersion: string;
+    /** The model used this astronaut's own baseline. */
+    personalBaseline?: boolean;
+    /** Finding is expected for the current activity (e.g. a workout): no siren. */
+    expected?: boolean;
+    contextNote?: string | null;
+    activity?: "exercise" | null;
   };
   precautions: string[];
   /** Recommended by the vitals model and shown to everyone immediately. The doctor can add more. */

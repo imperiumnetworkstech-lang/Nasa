@@ -63,7 +63,8 @@ export default async function Handover({ params, searchParams }: PageProps<"/app
 
       <section>
         <h2 className="mb-2 font-semibold">Observations (valid readings, period averages)</h2>
-        <table className="w-full text-sm">
+        <div className="-mx-1 overflow-x-auto px-1">
+        <table className="w-full min-w-[20rem] text-sm">
           <thead className="text-left text-xs text-muted">
             <tr>
               <th className="py-1">Measure</th>
@@ -96,6 +97,7 @@ export default async function Handover({ params, searchParams }: PageProps<"/app
             </tr>
           </tbody>
         </table>
+        </div>
       </section>
 
       <section>

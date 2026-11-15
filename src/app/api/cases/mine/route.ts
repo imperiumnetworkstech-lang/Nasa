@@ -10,7 +10,7 @@ export async function GET() {
   const c = cases[0];
   return NextResponse.json(
     {
-      case: c && c.status === "active"
+      case: c && c.status === "active" && !c.analysis.expected
         ? { id: c.id, emoji: c.analysis.emoji, label: c.analysis.label, severity: c.analysis.severity, message: c.analysis.message, precautions: c.precautions, medicines: c.medicines, medicineStatus: c.medicineStatus, reviewedBy: c.reviewedBy }
         : null,
     },
