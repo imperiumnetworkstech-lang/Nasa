@@ -10,7 +10,7 @@ import { requestTime } from "@/lib/utils";
 import { Wordmark } from "@/components/brand";
 import { DemoBadge } from "@/components/ui/badge";
 import { ConsoleClient } from "@/components/cases/console-client";
-import { AutoRefresh } from "@/components/cases/live";
+import { ConsolePulse } from "@/components/cases/live";
 import { CaseCard, CrewStatusBoard } from "@/components/cases/staff";
 import { profilesFor } from "@/lib/health/personal-server";
 
@@ -37,7 +37,7 @@ export default async function ConsolePage() {
   ];
   return (
     <div className="min-h-screen">
-      <AutoRefresh seconds={3} />
+      <ConsolePulse />
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <Wordmark tagline={false} />

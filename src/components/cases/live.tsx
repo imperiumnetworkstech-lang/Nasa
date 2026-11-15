@@ -10,7 +10,9 @@ import { installAudioUnlock, playAlarm, stopAlarm } from "@/components/shell/sou
 export function AutoRefresh({ seconds = 5 }: { seconds?: number }) {
   const router = useRouter();
   useEffect(() => {
-    const t = setInterval(() => router.refresh(), seconds * 1000);
+    const t = setInterval(() => {
+      if (!document.hidden) router.refresh();
+    }, seconds * 1000);
     return () => clearInterval(t);
   }, [router, seconds]);
   return null;
@@ -42,6 +44,7 @@ export function CrewCaseWatcher() {
   useEffect(() => {
     let stop = false;
     const check = async () => {
+      if (document.hidden) return;
       try {
         const res = await fetch("/api/cases/mine", { cache: "no-store" });
         const j = (await res.json()) as { case: MyCase | null };
@@ -64,7 +67,7 @@ export function CrewCaseWatcher() {
     };
     installAudioUnlock();
     void check();
-    const t = setInterval(check, 2000);
+    const t = setInterval(check, 4000);
     return () => {
       stop = true;
       clearInterval(t);
@@ -124,4 +127,34 @@ export function CrewCaseWatcher() {
       </div>
     </div>
   );
+}
+
+/**
+ * Scenario console live sync: checks one tiny "pulse" marker every 3 s and re-renders the page
+ * only when a case actually changed (instead of reloading everything on a timer).
+ */
+export function ConsolePulse() {
+  const router = useRouter();
+  const last = useRef<number | null>(null);
+  useEffect(() => {
+    const tick = async () => {
+      if (document.hidden) return;
+      try {
+        const j = (await (await fetch("/api/console/pulse", { cache: "no-store" })).json()) as { v: number };
+        if (last.current !== null && j.v !== last.current) router.refresh();
+        last.current = j.v;
+      } catch {
+        /* offline */
+      }
+    };
+    void tick();
+    const t = setInterval(tick, 3000);
+    const onVisible = () => void tick();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [router]);
+  return null;
 }

@@ -1,10 +1,10 @@
 import "server-only";
-import { addMissionDoc, addPersonal, listMembers, listMissionDocs, notify, updateMissionDoc } from "@/lib/data/repo";
+import { addMissionDoc, addPersonal, bumpMissionPulse, listMembers, listMissionDocs, notify, updateMissionDoc } from "@/lib/data/repo";
 import { analyzeVitals } from "@/lib/ml/vitals-model";
 import { GUIDE, type Condition } from "@/lib/ml/condition-guide";
 import { RANGES } from "@/lib/ml/vitals-reference";
 import { SCENARIO_BASE, type Scenario } from "@/lib/scenarios";
-import { currentActivity, forgetPersonalProfile, getPersonalProfile } from "@/lib/health/personal-server";
+import { currentActivity, getPersonalProfile, refreshPersonalProfile } from "@/lib/health/personal-server";
 import type { HealthCase, UserProfile, VitalKind } from "@/lib/types";
 
 /**
@@ -16,7 +16,8 @@ export async function createCaseFromReadings(crew: UserProfile, scenario: Scenar
   if (!crew.missionId) throw new Error("Crew member is not on a mission");
   const name = crew.callSign ? `${crew.displayName} (${crew.callSign})` : crew.displayName;
   // Personal baseline from the astronaut's own history, and what they're doing right now.
-  const profile = await getPersonalProfile(crew.uid, { fresh: true });
+  // Saved baseline (one read); the baseline excludes test readings, so it stays valid between readings.
+  const profile = await getPersonalProfile(crew.uid);
   const hasBaseline = Object.keys(profile.baseline).length >= 4;
   // Readings the scenario doesn't change take this astronaut's own usual value; then a little sensor jitter.
   const readings = Object.fromEntries(
@@ -80,7 +81,7 @@ export async function createCaseFromReadings(crew: UserProfile, scenario: Scenar
   }
   await addPersonal(crew.uid, "vitals", { uid: crew.uid, missionId: crew.missionId, origin: "simulated", createdAt: now, enteredBy: crew.uid, kind: "blood_pressure", value: readings.sbp, value2: readings.dbp, unit: "mmHg", measuredAt: now, source: "simulated", device: "Suit sensor (demo scenario)", quality: "valid" });
 
-  forgetPersonalProfile(crew.uid); // drift score changes with the new reading
+  await refreshPersonalProfile(crew.uid); // new reading → new drift score, saved for every board
 
   // Notify everyone who needs to know.
   const members = await listMembers(crew.missionId);
@@ -107,6 +108,8 @@ export async function createCaseFromReadings(crew: UserProfile, scenario: Scenar
       });
     }
   }
+  // One tiny write tells every open doctor/commander/console page that something changed.
+  await bumpMissionPulse(crew.missionId);
   return doc;
 }
 

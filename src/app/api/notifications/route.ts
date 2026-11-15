@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { listNotifications, markNotificationsRead } from "@/lib/data/repo";
+import { getInbox, listNotifications, markNotificationsRead, rebuildInbox } from "@/lib/data/repo";
 
-/** Unread count + newest unread item, polled by the bell. */
+/** Unread count + newest unread item for the bell. Reads ONE small summary document. */
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ count: 0 }, { status: 401 });
-  const unread = (await listNotifications(user.uid)).filter((n) => !n.readAt);
-  const latest = unread[0];
+  const inbox = (await getInbox(user.uid)) ?? (await rebuildInbox(user.uid));
   return NextResponse.json(
-    { count: unread.length, latest: latest ? { id: latest.id, title: latest.title, body: latest.body, emergency: latest.priority === "emergency" } : null },
+    { count: inbox.unread, v: inbox.v, latest: inbox.unread && inbox.latest ? inbox.latest : null },
     { headers: { "cache-control": "no-store" } },
   );
 }

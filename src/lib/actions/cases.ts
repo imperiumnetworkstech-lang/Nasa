@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isDemoEnabled } from "@/lib/config";
-import { audit, getMissionDoc, getUser, listMembers, notify, updateMissionDoc } from "@/lib/data/repo";
+import { audit, bumpMissionPulse, getMissionDoc, getUser, listMembers, notify, updateMissionDoc } from "@/lib/data/repo";
 import { createCaseFromReadings } from "@/lib/cases";
 import { getScenario } from "@/lib/scenarios";
 import type { HealthCase } from "@/lib/types";
@@ -69,6 +69,7 @@ export async function reviewCase(raw: Record<string, string | string[]>): Promis
     reviewedBy: u.displayName,
     reviewedAt: new Date().toISOString(),
   });
+  await bumpMissionPulse(u.missionId);
   await audit({ missionId: u.missionId, actorUid: u.uid, actorName: u.displayName, action: "case.review", target: `cases/${c.id}` });
   await notify({ uid: c.crewUid, kind: "medical_review", title: `🩺 ${u.displayName} added to your care`, body: p.data.note || `${c.analysis.label}: new advice from your doctor.`, href: "/app/crew/dashboard" });
   for (const m of (await listMembers(u.missionId)).filter((x) => x.assignment === "commander")) {
@@ -84,6 +85,7 @@ export async function resolveCase(caseId: string): Promise<R> {
   const c = await getMissionDoc(u.missionId, "cases", caseId);
   if (!c) return { ok: false, message: "Case not found." };
   await updateMissionDoc(u.missionId, "cases", caseId, { status: "resolved", resolvedAt: new Date().toISOString() });
+  await bumpMissionPulse(u.missionId);
   await audit({ missionId: u.missionId, actorUid: u.uid, actorName: u.displayName, action: "case.resolve", target: `cases/${caseId}` });
   await notify({ uid: c.crewUid, kind: "medical_review", title: "✅ Case closed by your doctor", body: c.analysis.label, href: "/app/crew/dashboard" });
   for (const m of (await listMembers(u.missionId)).filter((x) => x.assignment === "commander")) {

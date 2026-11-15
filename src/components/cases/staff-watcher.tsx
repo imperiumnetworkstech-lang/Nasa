@@ -58,20 +58,24 @@ export function StaffCaseWatcher() {
   useEffect(() => {
     let stop = false;
     const tick = async () => {
+      // A background tab doesn't poll at all; it catches up as soon as it's visible again.
+      if (document.hidden) return;
       try {
-        const res = await fetch("/api/cases/pulse", { cache: "no-store" });
+        const known = version.current === null ? "" : `?v=${encodeURIComponent(version.current)}`;
+        const res = await fetch(`/api/cases/pulse${known}`, { cache: "no-store" });
         if (!res.ok) return;
-        const j = (await res.json()) as { version: string; active: Active[] };
-        if (stop) return;
+        const j = (await res.json()) as { version: string; active?: Active[]; unchanged?: boolean };
+        if (stop || j.unchanged || !j.active) return; // nothing changed: one small read, no work
+        const active = j.active;
         if (seen.current === null) {
           // First load: everything already open counts as seen (no siren on page load).
           seen.current = loadSeen();
-          if (seen.current.size === 0) j.active.forEach((a) => seen.current!.add(a.id));
+          if (seen.current.size === 0) active.forEach((a) => seen.current!.add(a.id));
           saveSeen(seen.current);
         }
         // Expected findings (e.g. high heart rate during a scheduled workout) never sound the siren.
-        const fresh = j.active.filter((a) => !seen.current!.has(a.id) && !a.expected);
-        j.active.filter((a) => a.expected).forEach((a) => seen.current!.add(a.id));
+        const fresh = active.filter((a) => !seen.current!.has(a.id) && !a.expected);
+        active.filter((a) => a.expected).forEach((a) => seen.current!.add(a.id));
         if (fresh.length) {
           fresh.forEach((a) => seen.current!.add(a.id));
           saveSeen(seen.current);
@@ -85,10 +89,13 @@ export function StaffCaseWatcher() {
       }
     };
     void tick();
-    const t = setInterval(tick, 2000);
+    const t = setInterval(tick, 3000);
+    const onVisible = () => void tick();
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       stop = true;
       clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
       stopAlarm();
     };
   }, [router]);

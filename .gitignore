@@ -51,3 +51,6 @@ firestore-debug.log
 /test-results/
 /playwright-report/
 .tmp/
+
+# Demo video project (separate from the app)
+video/

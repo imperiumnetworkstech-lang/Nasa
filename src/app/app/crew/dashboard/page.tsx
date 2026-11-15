@@ -12,7 +12,6 @@ import { QuickFeeling } from "@/components/crew/quick-feeling";
 import { AstronautIllustration } from "@/components/illustrations";
 import { ScenarioGrid } from "@/components/cases/scenario-grid";
 import { CaseView } from "@/components/cases/case-view";
-import { AutoRefresh } from "@/components/cases/live";
 import { SCENARIOS } from "@/lib/scenarios";
 import { getMissionDoc } from "@/lib/data/repo";
 import { deckState } from "@/lib/skills/schedule";
@@ -114,7 +113,6 @@ export default async function CrewDashboard() {
         </div>
       </div>
 
-      <AutoRefresh seconds={8} />
       <section className={`relative overflow-hidden rounded-[var(--radius-card)] p-6 text-white shadow-[var(--shadow-pop)] ${activeCase ? (activeCase.analysis.severity === "urgent" ? "bg-[#d64545]" : "bg-[#e08a1e]") : "hero-gradient"}`}>
         <div className="relative z-10 max-w-[62%] space-y-3">
           <p className="text-xs font-medium text-white/85">{lastCase ? `Last suit reading ${relativeTime(lastCase.createdAt, now.getTime())}` : "No suit reading yet"}</p>

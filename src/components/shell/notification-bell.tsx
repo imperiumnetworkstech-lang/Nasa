@@ -21,6 +21,7 @@ export function NotificationBell({ initialCount }: { initialCount: number }) {
 
   const check = useCallback(async () => {
     try {
+      if (document.hidden) return; // background tabs don't poll
       const res = await fetch("/api/notifications", { cache: "no-store" });
       if (!res.ok) return;
       const j = (await res.json()) as { count: number; latest: { title: string; body: string; emergency?: boolean } | null };
@@ -44,7 +45,7 @@ export function NotificationBell({ initialCount }: { initialCount: number }) {
 
   useEffect(() => {
     // Check often so emergencies reach the doctor and commander within seconds.
-    const t = setInterval(check, 3_000);
+    const t = setInterval(check, 5_000);
     const onFocus = () => void check();
     window.addEventListener("focus", onFocus);
     return () => {

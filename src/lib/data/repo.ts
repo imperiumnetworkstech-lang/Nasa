@@ -138,13 +138,60 @@ export async function listNotifications(uid: string) {
   return (await getStore()).list<AppNotification>(`users/${uid}/notifications`, { orderBy: { field: "createdAt", dir: "desc" }, limit: 100 });
 }
 export async function notify(n: Omit<AppNotification, "id" | "createdAt" | "readAt">) {
+  const store = await getStore();
   const doc: AppNotification = { ...n, id: newId(), createdAt: new Date().toISOString(), readAt: null };
-  await (await getStore()).set(`users/${n.uid}/notifications/${doc.id}`, doc);
+  await store.set(`users/${n.uid}/notifications/${doc.id}`, doc);
+  // Keep the one-document inbox summary current, so the bell can check with a single read.
+  const inbox = await getInbox(n.uid);
+  await store.set(inboxPath(n.uid), {
+    unread: (inbox?.unread ?? 0) + 1,
+    v: (inbox?.v ?? 0) + 1,
+    latest: { id: doc.id, title: doc.title, body: doc.body, emergency: doc.priority === "emergency" },
+  } satisfies Inbox);
 }
 export async function markNotificationsRead(uid: string, ids: string[]) {
   const store = await getStore();
   const now = new Date().toISOString();
   await Promise.all(ids.map((id) => store.update(`users/${uid}/notifications/${id}`, { readAt: now })));
+  const inbox = await getInbox(uid);
+  await store.set(inboxPath(uid), { unread: 0, v: inbox?.v ?? 0, latest: inbox?.latest ?? null } satisfies Inbox);
+}
+
+// ---------- cheap "has anything changed?" markers (one small document each) ----------
+/** Per-person notification summary: the bell polls this instead of listing every notification. */
+export interface Inbox {
+  unread: number;
+  v: number;
+  latest: { id: string; title: string; body: string; emergency: boolean } | null;
+}
+const inboxPath = (uid: string) => `users/${uid}/meta/inbox`;
+export async function getInbox(uid: string): Promise<Inbox | null> {
+  return (await getStore()).get<Inbox>(inboxPath(uid));
+}
+/** Builds the inbox summary once from the notification list (for data created before it existed). */
+export async function rebuildInbox(uid: string): Promise<Inbox> {
+  const all = await listNotifications(uid);
+  const unread = all.filter((n) => !n.readAt);
+  const inbox: Inbox = { unread: unread.length, v: 1, latest: unread[0] ? { id: unread[0].id, title: unread[0].title, body: unread[0].body, emergency: unread[0].priority === "emergency" } : null };
+  await (await getStore()).set(inboxPath(uid), inbox);
+  return inbox;
+}
+
+/** Per-mission change marker: bumped whenever a health case changes. Live pages poll only this. */
+const pulsePath = (missionId: string) => `missions/${missionId}/meta/pulse`;
+export async function bumpMissionPulse(missionId: string) {
+  await (await getStore()).set(pulsePath(missionId), { v: Date.now() });
+}
+export async function getMissionPulse(missionId: string): Promise<number> {
+  return (await (await getStore()).get<{ v: number }>(pulsePath(missionId)))?.v ?? 0;
+}
+
+/** Saved personal profile (baseline + drift), so boards don't recompute from weeks of readings. */
+export async function getSavedProfile<T>(uid: string): Promise<(T & { computedAt: string }) | null> {
+  return (await getStore()).get<T & { computedAt: string }>(`users/${uid}/meta/profile`);
+}
+export async function saveProfile(uid: string, profile: object) {
+  await (await getStore()).set(`users/${uid}/meta/profile`, { ...profile, computedAt: new Date().toISOString() });
 }
 
 // ---------- settings / invites / lessons ----------
